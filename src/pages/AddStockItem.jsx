@@ -13,6 +13,7 @@ export default function AddStockItem({ onCancel, onSave }) {
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState("");
   const [form, setForm] = useState(() => ({
+    //to colocando aqui e modificando pra requisição real do servidor
     id: createItemId(),
     name: "",
     description: "",
@@ -33,6 +34,51 @@ export default function AddStockItem({ onCancel, onSave }) {
     }));
   }
 
+  async function getGroupId(e) {
+  e.preventDefault();
+  try {
+    const response = await fetch('https://buddylog-rosy.vercel.app/groups/listgroups', {
+      method: 'GET',
+      credentials: 'include'
+    });
+
+    if (!response.ok) {
+      setError('Erro após tentar pegar seu grupo, tente novamente!');
+      return null;
+    }
+
+    const data = await response.json();
+  
+    return data;
+  } catch (error) {
+    console.error('Erro ao buscar grupo:', error);
+    setError('Erro de conexão, tente novamente mais tarde.');
+    return null;
+  }
+}
+
+const saveItem = async(e) => {
+  e.preventDefault();
+  const group = await getGroupId(e);
+
+  if(!group)
+  try {
+    const response = await fetch(`https://buddylog-rosy.vercel.app/groups/${group.data.id}/items`, {
+      method: POST,
+      credentials: "include",
+      body: form
+    });
+    if(!response) {
+      console.log('Error while post item');
+      setError('Erro 400!');
+      return;
+    }
+  } catch(error) {
+    console.log('Error');
+    setError('Erro ao salvar item!, tente novamente!');
+  }
+}
+
   async function handleSubmit(event) {
     event.preventDefault();
     setError("");
@@ -42,8 +88,9 @@ export default function AddStockItem({ onCancel, onSave }) {
       await onSave?.({
         ...form,
         quantity: Number(form.quantity),
-        safetyStock: Number(form.safetyStock),
+        safetyStock: Number(form.safetyStock)
       });
+
     } catch (saveError) {
       setError(saveError.message ?? "Não foi possível salvar o item.");
     } finally {
@@ -114,7 +161,7 @@ export default function AddStockItem({ onCancel, onSave }) {
 
           <div className="form-actions form-field--full">
             <button className="secondary-button" type="button" onClick={onCancel} disabled={isSaving}>Cancelar</button>
-            <button className="primary-button" type="submit" disabled={isSaving}>
+            <button className="primary-button" type="submit" disabled={isSaving} onClick={saveItem}>
               {isSaving ? "Salvando..." : "Salvar item"}
             </button>
           </div>

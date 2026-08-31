@@ -19,6 +19,19 @@ export default function Login({ onLogin }) {
         });
     };
 
+  const handleGoogleSubmit = async (e) => {
+    e.preventDefault();
+    console.log('login do google em teste ainda')
+    //window.location.replace('https://buddylog-rosy.vercel.app/auth/google')
+    
+    /*try {
+      const response = await fetch('https://buddylog-rosy.vercel.app/auth/callback', {
+        method: GET
+      });
+    } catch(error) {
+
+    }*/
+  }
   
   /*basicamente isso aqui pega a url do servidor e manda um post request,
   dps com o credentials true ele retorna o token de usuario.*/
@@ -29,7 +42,13 @@ export default function Login({ onLogin }) {
       setError("Preencha o e-mail e a senha.");
       return;
     }
-    if(formData.password.length < 6) {
+
+    if(formData.email.length > 254) {
+      setError("Senha com menos de 6 caracteres!");
+      return;
+    }
+  
+    if(formData.password.length < 6 && formData.password > 72) {
       setError("Senha com menos de 6 caracteres!");
       return;
     };
