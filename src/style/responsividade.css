@@ -158,6 +158,14 @@
         min-height: 62px;
     }
 
+    .stock-form {
+        grid-template-columns: 1fr;
+    }
+
+    .form-field--full {
+        grid-column: auto;
+    }
+
     .login-centered-logo {
         width: min(280px, 94%);
         height: 88px;
@@ -186,6 +194,14 @@
     }
 
     .primary-button {
+        width: 100%;
+    }
+
+    .form-actions {
+        flex-direction: column-reverse;
+    }
+
+    .form-actions .secondary-button {
         width: 100%;
     }
 

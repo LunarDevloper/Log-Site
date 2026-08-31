@@ -128,3 +128,167 @@
     font-weight: 600;
     cursor: pointer
 }
+
+.secondary-button {
+    min-height: 42px;
+    padding: 0 18px;
+    border: 1px solid var(--border);
+    border-radius: 9px;
+    background: transparent;
+    color: var(--text);
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.stock-form {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 18px;
+}
+
+.form-field {
+    display: flex;
+    min-width: 0;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.form-field--full {
+    grid-column: 1 / -1;
+}
+
+.form-field > span {
+    color: var(--muted);
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.form-field input,
+.form-field textarea {
+    width: 100%;
+    border: 1px solid var(--border);
+    border-radius: 9px;
+    outline: 0;
+    background: var(--bg2);
+    color: var(--text);
+    font: inherit;
+}
+
+.form-field input {
+    height: 42px;
+    padding: 0 12px;
+}
+
+.number-control {
+    position: relative;
+    overflow: hidden;
+    border: 1px solid var(--border);
+    border-radius: 9px;
+    background: var(--bg2);
+    transition: border-color .2s, box-shadow .2s;
+}
+
+.number-control:focus-within {
+    border-color: rgba(124, 58, 237, .45);
+}
+
+.number-control input {
+    width: 100%;
+    padding-right: 30px;
+    border: 0;
+    border-radius: 0;
+    appearance: textfield;
+    -moz-appearance: textfield;
+}
+
+.number-control input:focus {
+    border-color: var(--border);
+}
+
+.number-control input::-webkit-inner-spin-button,
+.number-control input::-webkit-outer-spin-button {
+    margin: 0;
+    appearance: none;
+    -webkit-appearance: none;
+}
+
+.number-arrows {
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    display: grid;
+    width: 26px;
+    grid-template-rows: 1fr 1fr;
+    border-left: 1px solid var(--border);
+}
+
+.number-arrows button {
+    min-width: 0;
+    min-height: 0;
+    padding: 0;
+    border: 0;
+    background: #1c1635;
+    color: var(--muted);
+    font-size: 7px;
+    line-height: 1;
+    cursor: pointer;
+    transition: background .2s, color .2s;
+}
+
+.number-arrows button:first-child {
+    border-bottom: 1px solid var(--border);
+}
+
+.number-arrows button:hover {
+    background: #251b48;
+    color: var(--text);
+}
+
+.number-arrows button:active {
+    background: #2d2058;
+}
+
+.form-field textarea {
+    min-height: 100px;
+    padding: 12px;
+    resize: vertical;
+}
+
+.form-field input:focus,
+.form-field textarea:focus {
+    border-color: var(--neon);
+}
+
+.form-field input[readonly] {
+    color: var(--dim);
+    cursor: not-allowed;
+}
+
+.form-field small {
+    color: var(--dim);
+    font-size: 10px;
+}
+
+.form-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    padding-top: 4px;
+}
+
+.form-error {
+    margin: 0;
+    padding: 10px 12px;
+    border: 1px solid rgba(239, 68, 68, .35);
+    border-radius: 9px;
+    background: rgba(239, 68, 68, .08);
+    color: #fca5a5;
+    font-size: 12px;
+}
+
+.primary-button:disabled,
+.secondary-button:disabled {
+    cursor: not-allowed;
+    opacity: .6;
+}

@@ -1,4 +1,4 @@
-export default function PageHeader({ page, subtitle }) {
+export default function PageHeader({ page, subtitle, onAdd }) {
   return (
     <div className="page-heading">
 
@@ -8,7 +8,7 @@ export default function PageHeader({ page, subtitle }) {
         <p>{subtitle}</p>
       </div>
 
-      <button className="primary-button">
+      <button className="primary-button" type="button" onClick={onAdd}>
         Adicionar
       </button>
 

@@ -1,7 +1,9 @@
+import { useState } from "react";
 import Card from "../components/Card";
 import PageHeader from "../components/PageHeader";
 import Stats from "../components/Stats";
 import DataTable from "../components/DataTable";
+import AddStockItem from "./AddStockItem";
 
 const pageConfig = {
   Estoque: {
@@ -48,7 +50,21 @@ const pageConfig = {
 };
 
 export default function PageContent({ page }) {
+  const [addingStockItem, setAddingStockItem] = useState(false);
   const config = pageConfig[page];
+
+  if (page === "Estoque" && addingStockItem) {
+    return (
+      <AddStockItem
+        onCancel={() => setAddingStockItem(false)}
+        onSave={async (item) => {
+          // TODO: enviar `item` usando a integração existente do backend.
+          console.log("Item preparado para envio:", item);
+          setAddingStockItem(false);
+        }}
+      />
+    );
+  }
 
   return (
     <div className="page-stack">
@@ -56,6 +72,7 @@ export default function PageContent({ page }) {
       <PageHeader
         page={page}
         subtitle={config.subtitle}
+        onAdd={page === "Estoque" ? () => setAddingStockItem(true) : undefined}
       />
 
       <Stats stats={config.stats} />
