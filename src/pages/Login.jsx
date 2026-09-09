@@ -1,7 +1,7 @@
 import { useState } from "react";
 import logo from "../assets/logo-new.png";
 
-export default function Login({ onLogin }) {
+export default function Login({ onLogin, onSignup }) {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   /*marcos substitui aquele baguil do email e do password, na requisição o json tem
@@ -118,6 +118,9 @@ export default function Login({ onLogin }) {
             <path fill="#EA4335" d="M9 3.58c1.321 0 2.507.454 3.441 1.346l2.581-2.581C13.464.891 11.426 0 9 0A9 9 0 0 0 .956 4.962l3.007 2.332C4.672 5.165 6.656 3.58 9 3.58Z" />
           </svg>
           <span>Continuar com Google</span>
+        </button>
+        <button className="login-note login-signup-link" type="button" onClick={onSignup}>
+          Não tem conta? crie a sua hoje mesmo!
         </button>
       </form>
     </main>

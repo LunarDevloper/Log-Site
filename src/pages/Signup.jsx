@@ -1,9 +1,10 @@
 import { useState } from "react";
 import logo from "../assets/logo-new.png";
 
-export default function Login({ onLogin }) {
+export default function Signup({ onBackToLogin }) {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
   /*marcos substitui aquele baguil do email e do password, na requisição o json tem
   que ser mandado como um só*/
   const [formData, setFormData] = useState({
@@ -19,18 +20,9 @@ export default function Login({ onLogin }) {
         });
     };
 
-  const handleGoogleSubmit = async (e) => {
+  const handleGoogleSubmit = (e) => {
     e.preventDefault();
-    console.log('login do google em teste ainda')
-    //window.location.replace('https://buddylog-rosy.vercel.app/auth/google')
-    
-    /*try {
-      const response = await fetch('https://buddylog-rosy.vercel.app/auth/callback', {
-        method: GET
-      });
-    } catch(error) {
-
-    }*/
+    setError("Cadastro com Google ainda não está disponível.");
   }
   
   /*basicamente isso aqui pega a url do servidor e manda um post request,
@@ -38,23 +30,26 @@ export default function Login({ onLogin }) {
   const handleSubmit = async(e) => {
     e.preventDefault();
 
-    if (formData.email === '' ||formData.password === '') {
+    setError("");
+
+    if (formData.email.trim() === '' || formData.password === '') {
       setError("Preencha o e-mail e a senha.");
       return;
     }
 
     if(formData.email.length > 254) {
-      setError("Senha com menos de 6 caracteres!");
+      setError("Informe um e-mail válido.");
       return;
     }
   
-    if(formData.password.length < 6 && formData.password > 72) {
-      setError("Senha com menos de 6 caracteres!");
+    if(formData.password.length < 6 || formData.password.length > 72) {
+      setError("A senha deve ter entre 6 e 72 caracteres.");
       return;
     };
 
+    setIsSubmitting(true);
     try {
-      const response = await fetch('http://localhost:3000/auth/login', {
+      const response = await fetch('http://localhost:3000/auth/signup', {
         method: 'POST',
         headers: {
                     'Content-Type': 'application/json'
@@ -63,15 +58,27 @@ export default function Login({ onLogin }) {
         body: JSON.stringify(formData)
       });
       if(!response.ok) {
-        if(response.status === 429) return alert('Timeout, volte em 5 minutos');
-        if(response.status === 400 || response.status === 401) return alert('Bad Request');
-        if(response.status === 404) return alert('servidor fora do ar!')
+        if(response.status === 409) {
+          setError("Este e-mail já está cadastrado.");
+          return;
+        }
+        if(response.status === 400) {
+          setError("Confira os dados informados.");
+          return;
+        }
+        if(response.status === 429) {
+          setError("Muitas tentativas. Tente novamente em alguns minutos.");
+          return;
+        }
+        setError("Não foi possível criar sua conta.");
+        return;
       };
-      /*url hipotetica.*/
-      alert('login sucedido!')
-      onLogin();
+      alert('Conta criada com sucesso!');
+      onBackToLogin();
     } catch(error) {
-      console.log(error)
+      setError("Não foi possível conectar ao servidor.");
+    } finally {
+      setIsSubmitting(false);
     }
   }
 
@@ -107,10 +114,12 @@ export default function Login({ onLogin }) {
         </div>
 
         {error && <p className="login-error">{error}</p>}
-        <button className="login-submit" type="submit">Entrar no sistema</button>
+        <button className="login-submit" type="submit" disabled={isSubmitting}>
+          {isSubmitting ? "Criando conta..." : "Criar conta"}
+        </button>
 
         <div className="login-divider"><span>ou</span></div>
-        <button className="google-login" type="button" onClick={onLogin}>
+        <button className="google-login" type="button" onClick={handleGoogleSubmit}>
           <svg className="google-icon" viewBox="0 0 18 18" aria-hidden="true">
             <path fill="#4285F4" d="M17.64 9.205c0-.638-.057-1.252-.164-1.841H9v3.482h4.844a4.14 4.14 0 0 1-1.797 2.715v2.258h2.909c1.703-1.568 2.684-3.878 2.684-6.614Z" />
             <path fill="#34A853" d="M9 18c2.43 0 4.468-.806 5.956-2.181l-2.909-2.258c-.806.54-1.835.859-3.047.859-2.344 0-4.328-1.585-5.037-3.714H.956v2.332A9 9 0 0 0 9 18Z" />
@@ -118,6 +127,9 @@ export default function Login({ onLogin }) {
             <path fill="#EA4335" d="M9 3.58c1.321 0 2.507.454 3.441 1.346l2.581-2.581C13.464.891 11.426 0 9 0A9 9 0 0 0 .956 4.962l3.007 2.332C4.672 5.165 6.656 3.58 9 3.58Z" />
           </svg>
           <span>Continuar com Google</span>
+        </button>
+        <button className="login-note login-signup-link" type="button" onClick={onBackToLogin}>
+          Já tem uma conta? entre no sistema.
         </button>
       </form>
     </main>
