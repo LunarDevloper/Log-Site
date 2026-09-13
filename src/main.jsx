@@ -9,6 +9,7 @@ import "./style/dashboard.css";
 import "./style/login.css";
 import "./style/responsividade.css";
 import "./style/tabela.css";
+import "./style/popup.css";
 
 ReactDOM.createRoot(document.getElementById("root")).render(
   <React.StrictMode>

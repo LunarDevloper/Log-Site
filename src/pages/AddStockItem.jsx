@@ -61,12 +61,19 @@ const saveItem = async(e) => {
   e.preventDefault();
   const group = await getGroupId(e);
 
-  if(!group)
+  if (!group) return;
+
   try {
-    const response = await fetch(`https://buddylog-rosy.vercel.app/groups/${group.data.id}/items`, {
-      method: POST,
+    const groupId = group?.groups?.[0]?.id;
+    if (!groupId) {
+      setError('Grupo não encontrado.');
+      return;
+    }
+    const response = await fetch(`https://buddylog-rosy.vercel.app/groups/${groupId}/items`, {
+      method: "POST",
       credentials: "include",
-      body: form
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(form)
     });
     if(!response) {
       console.log('Error while post item');

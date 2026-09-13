@@ -1,6 +1,8 @@
 import { useState } from "react";
 import logo from "../assets/logo-new.png";
 
+const API_BASE = (import.meta.env.VITE_API_URL ?? "https://buddylog-rosy.vercel.app").replace(/\/$/, "");
+
 export default function Login({ onLogin, onSignup }) {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
@@ -54,7 +56,7 @@ export default function Login({ onLogin, onSignup }) {
     };
 
     try {
-      const response = await fetch('http://localhost:3000/auth/login', {
+      const response = await fetch(`${API_BASE}/auth/login`, {
         method: 'POST',
         headers: {
                     'Content-Type': 'application/json'

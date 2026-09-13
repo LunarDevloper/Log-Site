@@ -1,119 +1,159 @@
 import { useState } from "react";
 import logo from "../assets/logo-new.png";
+import Popup from "../components/Popup";
+
+const API_BASE = (import.meta.env.VITE_API_URL ?? "https://buddylog-rosy.vercel.app").replace(/\/$/, "");
 
 export default function Signup({ onBackToLogin }) {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
+  const [popupOpen, setPopupOpen] = useState(false);
+  const [success, setSuccess] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
-  /*marcos substitui aquele baguil do email e do password, na requisição o json tem
-  que ser mandado como um só*/
   const [formData, setFormData] = useState({
-        email: '',
-        password: ''
-    });
-    /*ah e nesse baguil criei uma função pra modularizar mais o código, nesse caso
-    como ele tem tudo em um json só tem q pegar os elementos anteriores.*/
-  const handleChange = (e) => {
-        setFormData({
-            ...formData,
-            [e.target.name]: e.target.value
-        });
-    };
+    email: "",
+    password: "",
+    displayName: "",
+  });
 
-  const handleGoogleSubmit = (e) => {
-    e.preventDefault();
-    setError("Cadastro com Google ainda não está disponível.");
-  }
   
-  /*basicamente isso aqui pega a url do servidor e manda um post request,
-  dps com o credentials true ele retorna o token de usuario.*/
-  const handleSubmit = async(e) => {
+  const handleChange = (e) => {
+    setFormData({
+      ...formData,
+      [e.target.name]: e.target.value,
+    });
+    if (popupOpen) setPopupOpen(false);
+  };
+
+  const showError = (message) => {
+    setError(message);
+    setPopupOpen(true);
+  };
+
+  const handleClosePopup = () => {
+    setPopupOpen(false);
+  };
+
+  const handleGoogleSubmit = () => {
+    window.location.assign(`${API_BASE}/auth/google`);
+  };
+  const handleSubmit = async (e) => {
     e.preventDefault();
 
     setError("");
+    setPopupOpen(false);
+    setSuccess("");
 
-    if (formData.email.trim() === '' || formData.password === '') {
-      setError("Preencha o e-mail e a senha.");
+    const email = formData.email.trim();
+    const displayName = formData.displayName.trim();
+
+    if (email === "" || formData.password === "") {
+      showError("Preencha o e-mail e a senha.");
       return;
     }
 
-    if(formData.email.length > 254) {
-      setError("Informe um e-mail válido.");
+    if (email.length > 254) {
+      showError("Informe um e-mail válido.");
       return;
     }
-  
-    if(formData.password.length < 6 || formData.password.length > 72) {
-      setError("A senha deve ter entre 6 e 72 caracteres.");
+
+    if (formData.password.length < 6 || formData.password.length > 72) {
+      showError("A senha deve ter entre 6 e 72 caracteres.");
       return;
-    };
+    }
 
     setIsSubmitting(true);
     try {
-      const response = await fetch('http://localhost:3000/auth/signup', {
-        method: 'POST',
+      const body = { email, password: formData.password };
+      if (displayName !== "") body.displayName = displayName;
+
+      const response = await fetch(`${API_BASE}/auth/signup`, {
+        method: "POST",
         headers: {
-                    'Content-Type': 'application/json'
-                },
-        credentials: 'include', 
-        body: JSON.stringify(formData)
+          "Content-Type": "application/json",
+        },
+        credentials: "include",
+        body: JSON.stringify(body),
       });
-      if(!response.ok) {
-        if(response.status === 409) {
-          setError("Este e-mail já está cadastrado.");
+      let data = null;
+      try {
+        data = await response.json();
+      } catch {
+        data = null;
+      }
+
+      if (!response.ok) {
+        if (response.status === 409) {
+          showError("Este e-mail já está cadastrado.");
           return;
         }
-        if(response.status === 400) {
-          setError("Confira os dados informados.");
+        if (response.status === 400) {
+          console.log("Erro real do backend:", data); 
+          showError(data?.error ?? "Confira os dados informados.");
           return;
         }
-        if(response.status === 429) {
-          setError("Muitas tentativas. Tente novamente em alguns minutos.");
+        if (response.status === 429) {
+          showError("Muitas tentativas. Tente novamente em alguns minutos.");
           return;
         }
-        setError("Não foi possível criar sua conta.");
+        showError(data?.error ?? "Não foi possível criar sua conta.");
         return;
-      };
-      alert('Conta criada com sucesso!');
-      onBackToLogin();
-    } catch(error) {
-      setError("Não foi possível conectar ao servidor.");
+      }
+
+      if (data?.sessionCreated === false) {
+        setSuccess(
+          data?.message ?? "Conta criada! Verifique seu e-mail para confirmar o cadastro e depois entre no sistema.",
+        );
+      } else {
+        setSuccess(data?.message ?? "Conta criada com sucesso!");
+      }
+      setTimeout(() => onBackToLogin(), 1800);
+    } catch (error) {
+      console.error(error);
+      showError("Não foi possível conectar ao servidor.");
     } finally {
       setIsSubmitting(false);
     }
-  }
-
-  
+  };
 
   return (
     <main className="login-page login-page--centered">
       <div className="login-background-grid" />
-      <form className="login-card login-card--centered" onSubmit={handleSubmit}>
+      <form className="login-card login-card--centered login-card--signup" onSubmit={handleSubmit}>
         <img src={logo} alt="Buddylog" className="login-centered-logo" />
         <div className="login-heading login-heading--centered">
           <span>Bem-vindo</span>
           <h1>Crie sua conta</h1>
-          <p>Insira seu Email e Senha</p>
+          <p>Insira seu nome, e-mail e senha</p>
         </div>
 
         <label className="login-field">
-          <span>E-mail</span>
-          <input type="email" name = "email" placeholder="operador@empresa.com" value={formData.email} onChange={handleChange} autoComplete="email" />
+          <span>Nome (opcional)</span>
+          <input
+            type="username"
+            name="displayName"
+            placeholder="Como devemos te chamar?"
+            value={formData.displayName}
+            onChange={handleChange}
+            autoComplete="nickname"
+          />
         </label>
 
         <label className="login-field">
+          <span>E-mail</span>
+          <input type="email" name="email" placeholder="operador@empresa.com" value={formData.email} onChange={handleChange} autoComplete="email" />
+        </label>
+
+        <label className="login-field login-field--password">
           <span>Senha</span>
           <div className="password-wrap">
-            <input type={showPassword ? "text" : "password"} name = "password" placeholder="Digite sua senha" value={formData.password} onChange={handleChange} autoComplete="current-password" />
+            <input type={showPassword ? "text" : "password"} name="password" placeholder="Mínimo de 6 caracteres" value={formData.password} onChange={handleChange} autoComplete="new-password" />
             <button type="button" onClick={() => setShowPassword((v) => !v)}>{showPassword ? "Ocultar" : "Mostrar"}</button>
           </div>
         </label>
 
-        <div className="login-options">
-          <label><input type="checkbox" /> <span>Lembrar de mim</span></label>
-          <button type="button">Esqueci minha senha</button>
-        </div>
-
         {error && <p className="login-error">{error}</p>}
+        {success && <p className="login-success">{success}</p>}
         <button className="login-submit" type="submit" disabled={isSubmitting}>
           {isSubmitting ? "Criando conta..." : "Criar conta"}
         </button>
@@ -132,6 +172,14 @@ export default function Signup({ onBackToLogin }) {
           Já tem uma conta? entre no sistema.
         </button>
       </form>
+
+      <Popup
+        open={popupOpen}
+        onClose={handleClosePopup}
+        title="Não foi possível criar sua conta"
+        subtitle="Verifique o detalhe abaixo e tente novamente."
+        error={error}
+      />
     </main>
   );
 }

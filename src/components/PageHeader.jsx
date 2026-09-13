@@ -7,11 +7,6 @@ export default function PageHeader({ page, subtitle, onAdd }) {
         <h1>{page}</h1>
         <p>{subtitle}</p>
       </div>
-
-      <button className="primary-button" type="button" onClick={onAdd}>
-        Adicionar
-      </button>
-
     </div>
   );
 }
