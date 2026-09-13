@@ -10,6 +10,8 @@ const icons = {
   menu: "M4 6h16 M4 12h16 M4 18h16",
   search: "M11 19a8 8 0 100-16 8 8 0 000 16z M21 21l-4.35-4.35",
   bell: "M18 8a6 6 0 00-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9 M10 21h4",
+  team: "M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2 M9 11a4 4 0 100-8 4 4 0 000 8z M23 21v-2a4 4 0 00-3-3.87 M16 3.13a4 4 0 010 7.75",
+  company: "M3 21h18 M5 21V7l7-4 7 4v14 M9 9h.01 M9 13h.01 M9 17h.01 M15 9h.01 M15 13h.01 M15 17h.01",
 };
 
 export default function Icon({ name, size = 18 }) {

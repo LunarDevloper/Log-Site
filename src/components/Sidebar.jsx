@@ -3,7 +3,7 @@ import logo from "../assets/logo-new.png";
 
 
 const items = [
-  ["Dashboard", "dashboard"],["Estoque", "stock"], ["Empresa", "company"], ["Movimentações", "movements"],
+  ["Empresa", "company"], ["Dashboard", "dashboard"],["Estoque", "stock"], ["Movimentações", "movements"], ["Equipe", "team"],
   ["Pedidos", "orders"], ["Robôs", "robots"], ["Alertas", "alerts"],
   ["Relatórios", "reports"], ["Configurações", "settings"],
 ];

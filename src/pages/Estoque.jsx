@@ -1,95 +1,86 @@
-import { useState, useEffect } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import Card from '../components/Card';
 import PageHeader from '../components/PageHeader';
 import Stats from '../components/Stats';
 import DataTable from '../components/DataTable';
 import Popup from '../components/Popup';
+import { ErrorBanner } from '../components/Feedback';
 import AddStockItem from './AddStockItem';
+import { API_BASE, friendlyError, networkError } from '../lib/api';
 
 const page = 'Estoque';
 
-const config = {
-  subtitle: 'Visão geral dos produtos armazenados',
-  columns: ['Produto', 'Categoria', 'Localização', 'Quantidade', 'Status'],
-  stats: ['Produtos', 'Estoque baixo', 'Categorias', 'Ocupação'],
-};
+const columns = ['Produto', 'Descrição', 'Quantidade', 'Estoque mín.', 'Status'];
 
-export default function Estoque() {
+export default function Estoque({ group }) {
   const [addingStockItem, setAddingStockItem] = useState(false);
   const [items, setItems] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [popupOpen, setPopupOpen] = useState(false);
+  const [query, setQuery] = useState(``);
+  const [onlyLow, setOnlyLow] = useState(false);
 
-  const showError = (message) => {
-    setError(message);
-    setPopupOpen(true);
-  };
-
-  const handleClosePopup = () => {
-    setPopupOpen(false);
-  };
+  const loadInventory = useCallback(async () => {
+    const groupId = group?.id;
+    if (!groupId) {
+      setLoading(false);
+      setError(`Escolha uma empresa para ver o estoque.`);
+      return;
+    }
+    setLoading(true);
+    setError(null);
+    try {
+      const response = await fetch(`${API_BASE}/groups/getinvetory/${groupId}`, {
+        credentials: `include`,
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        if (response.status === 403) {
+          setError(`Seu cargo não tem acesso ao estoque deste grupo. Peça a permissão ViewInventory a um admin.`);
+        } else {
+          setError(friendlyError(response.status, data?.error, `Não foi possível carregar o estoque.`));
+        }
+        return;
+      }
+      setItems(data.inventory?.Items ?? []);
+    } catch {
+      setError(networkError(`carregar o estoque`));
+    } finally {
+      setLoading(false);
+    }
+  }, [group?.id]);
 
   useEffect(() => {
-    let cancelled = false;
-
-    async function getGroupId() {
-      try {
-        const response = await fetch('https://buddylog-rosy.vercel.app/groups/listgroups', {
-          method: 'GET',
-          credentials: 'include',
-        });
-        if (!response.ok) {
-          if (!cancelled) showError('Erro após tentar pegar seu grupo, tente novamente!');
-          return null;
-        }
-        return await response.json();
-      } catch (err) {
-        console.error('Erro ao buscar grupo:', err);
-        if (!cancelled) showError('Erro de conexão, tente novamente mais tarde.');
-        return null;
-      }
-    }
-
-    async function loadInventory() {
-      const groupData = await getGroupId();
-      const groupId = groupData?.groups?.[0]?.id;
-      if (!groupId || cancelled) return;
-
-      try {
-        const response = await fetch(`https://buddylog-rosy.vercel.app/groups/getinvetory/${groupId}`, {
-          method: 'GET',
-          credentials: 'include',
-        });
-
-        if (cancelled) return;
-
-        if (response.ok) {
-          const inventoryData = await response.json();
-          setItems(inventoryData.inventory?.Items ?? []);
-        } else {
-          showError('Erro ao carregar estoque, tente novamente!');
-        }
-      } catch (err) {
-        console.log('Error:', err);
-        if (!cancelled) showError('Erro ao carregar item, tente novamente!');
-      }
-    }
-
     loadInventory();
+  }, [loadInventory]);
 
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    return items.filter((it) => {
+      if (onlyLow && !it.LowStock) return false;
+      if (!q) return true;
+      return `${it.DisplayName ?? ``} ${it.Description ?? ``}`.toLowerCase().includes(q);
+    });
+  }, [items, query, onlyLow]);
+
+  const rows = useMemo(() => filtered.map((it) => [
+    it.DisplayName ?? `--`,
+    it.Description || `—`,
+    it.Amount ?? 0,
+    it.SecurityLimit ?? 0,
+    it.LowStock ? `⚠️ Baixo` : `OK`,
+  ]), [filtered]);
+
+  const lowCount = useMemo(() => items.filter((it) => it.LowStock).length, [items]);
 
   if (addingStockItem) {
     return (
       <AddStockItem
+        group={group}
         onCancel={() => setAddingStockItem(false)}
-        onSave={async (newItem) => {
-          console.log('Item preparado para envio:', newItem);
-          setItems((prev) => [...prev, newItem]);
+        onSave={() => {
           setAddingStockItem(false);
+          loadInventory();
         }}
       />
     );
@@ -97,28 +88,41 @@ export default function Estoque() {
 
   return (
     <div className="page-stack">
-      {error && <div className="error-banner">{error}</div>}
-      <PageHeader
-        page={page}
-        subtitle={config.subtitle}
-        onAdd={() => setAddingStockItem(true)}
-      />
-      <button className="primary-button" type="button" onClick={() => setAddingStockItem(true)}>
-        Adicionar
-      </button>
-      <Stats stats={config.stats} />
-      <Card title={`Lista de ${page.toLowerCase()}`} subtitle="Estrutura visual preparada para receber dados reais">
-        <div className="toolbar">
-          <input placeholder="Pesquisar..." />
-          <select defaultValue="Todos">
-            <option>Todos</option>
-          </select>
-        </div>
-        <DataTable columns={config.columns} data={items} />
+      <ErrorBanner message={error} onRetry={loadInventory} retrying={loading} onDismiss={() => setError(null)} />
+      <PageHeader page={page} subtitle={group ? `Produtos de ${group.name}` : `Escolha uma empresa`} />
+      <div className="toolbar">
+        <input placeholder="Pesquisar produto..." value={query} onChange={(e) => setQuery(e.target.value)} />
+        <select value={onlyLow ? `low` : `all`} onChange={(e) => setOnlyLow(e.target.value === `low`)}>
+          <option value="all">Todos</option>
+          <option value="low">Estoque baixo</option>
+        </select>
+        <button className="secondary-button" type="button" onClick={loadInventory} disabled={loading}>
+          {loading ? `Carregando...` : `Atualizar`}
+        </button>
+        <button className="primary-button" type="button" onClick={() => setAddingStockItem(true)}>
+          + Adicionar
+        </button>
+      </div>
+      <Stats stats={[
+        { label: `Produtos`, value: loading ? `…` : items.length, hint: group?.name ?? `` },
+        { label: `Estoque baixo`, value: loading ? `…` : lowCount, hint: lowCount ? `Precisando de reposição` : `Tudo sob controle` },
+        { label: `Unidades`, value: loading ? `…` : items.reduce((a, it) => a + (Number(it.Amount) || 0), 0), hint: `Somando quantidades` },
+        { label: `Filtro`, value: filtered.length, hint: onlyLow ? `Só estoque baixo` : `Todos os itens` },
+      ]} />
+      <Card title="Produtos" subtitle={loading ? `Carregando...` : `${filtered.length} item(ns)`}>
+        <DataTable
+          columns={columns}
+          data={rows}
+          loading={loading}
+          emptyTitle={items.length === 0 ? `Estoque vazio` : `Nada encontrado`}
+          emptySubtitle={items.length === 0 ? `Cadastre o primeiro produto para começar.` : `Ajuste a busca ou o filtro.`}
+          emptyActionLabel={items.length === 0 ? `Cadastrar produto` : undefined}
+          onEmptyAction={items.length === 0 ? () => setAddingStockItem(true) : undefined}
+        />
       </Card>
       <Popup
-        open={popupOpen}
-        onClose={handleClosePopup}
+        open={!!error && false}
+        onClose={() => setError(null)}
         title="Não foi possível carregar o estoque"
         subtitle="Verifique o detalhe abaixo e tente novamente."
         error={error}

@@ -1,83 +1,61 @@
 import { useState } from "react";
 import logo from "../assets/logo-new.png";
-
-const API_BASE = (import.meta.env.VITE_API_URL ?? "https://buddylog-rosy.vercel.app").replace(/\/$/, "");
+import { API_BASE, friendlyError, networkError } from "../lib/api";
 
 export default function Login({ onLogin, onSignup }) {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
-  /*marcos substitui aquele baguil do email e do password, na requisição o json tem
-  que ser mandado como um só*/
-  const [formData, setFormData] = useState({
-        email: '',
-        password: ''
-    });
-    /*ah e nesse baguil criei uma função pra modularizar mais o código, nesse caso
-    como ele tem tudo em um json só tem q pegar os elementos anteriores.*/
+  const [loading, setLoading] = useState(false);
+  const [formData, setFormData] = useState({ email: '', password: '' });
+
   const handleChange = (e) => {
-        setFormData({
-            ...formData,
-            [e.target.name]: e.target.value
-        });
-    };
+    setFormData((prev) => ({ ...prev, [e.target.name]: e.target.value }));
+    if (error) setError("");
+  };
 
-  const handleGoogleSubmit = async (e) => {
+  const handleGoogle = () => {
+    window.location.assign(`${API_BASE}/auth/google`);
+  };
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    console.log('login do google em teste ainda')
-    //window.location.replace('https://buddylog-rosy.vercel.app/auth/google')
-    
-    /*try {
-      const response = await fetch('https://buddylog-rosy.vercel.app/auth/callback', {
-        method: GET
-      });
-    } catch(error) {
+    const email = formData.email.trim();
 
-    }*/
-  }
-  
-  /*basicamente isso aqui pega a url do servidor e manda um post request,
-  dps com o credentials true ele retorna o token de usuario.*/
-  const handleSubmit = async(e) => {
-    e.preventDefault();
-
-    if (formData.email === '' ||formData.password === '') {
-      setError("Preencha o e-mail e a senha.");
+    if (!email || !formData.password) {
+      setError("Preencha seu e-mail e sua senha para entrar.");
+      return;
+    }
+    if (email.length > 254 || !email.includes(`@`)) {
+      setError("Esse e-mail não parece válido. Confira e tente de novo.");
+      return;
+    }
+    if (formData.password.length < 6 || formData.password.length > 72) {
+      setError("A senha deve ter entre 6 e 72 caracteres.");
       return;
     }
 
-    if(formData.email.length > 254) {
-      setError("Senha com menos de 6 caracteres!");
-      return;
-    }
-  
-    if(formData.password.length < 6 && formData.password > 72) {
-      setError("Senha com menos de 6 caracteres!");
-      return;
-    };
-
+    setLoading(true);
+    setError("");
     try {
       const response = await fetch(`${API_BASE}/auth/login`, {
         method: 'POST',
-        headers: {
-                    'Content-Type': 'application/json'
-                },
-        credentials: 'include', 
-        body: JSON.stringify(formData)
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ email, password: formData.password }),
       });
-      if(!response.ok) {
-        if(response.status === 429) return alert('Timeout, volte em 5 minutos');
-        if(response.status === 400 || response.status === 401) return alert('Bad Request');
-        if(response.status === 404) return alert('servidor fora do ar!')
-      };
-      /*url hipotetica.*/
-      alert('login sucedido!')
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        if (response.status === 401) setError("E-mail ou senha incorretos. Tente de novo.");
+        else setError(friendlyError(response.status, data?.error, `Não foi possível entrar agora.`));
+        return;
+      }
       onLogin();
-    } catch(error) {
-      console.log(error)
+    } catch {
+      setError(networkError(`entrar`));
+    } finally {
+      setLoading(false);
     }
-  }
-
-  
+  };
 
   return (
     <main className="login-page login-page--centered">
@@ -92,27 +70,24 @@ export default function Login({ onLogin, onSignup }) {
 
         <label className="login-field">
           <span>E-mail</span>
-          <input type="email" name = "email" placeholder="operador@empresa.com" value={formData.email} onChange={handleChange} autoComplete="email" />
+          <input type="email" name="email" placeholder="operador@empresa.com" value={formData.email} onChange={handleChange} autoComplete="email" />
         </label>
 
         <label className="login-field">
           <span>Senha</span>
           <div className="password-wrap">
-            <input type={showPassword ? "text" : "password"} name = "password" placeholder="Digite sua senha" value={formData.password} onChange={handleChange} autoComplete="current-password" />
+            <input type={showPassword ? "text" : "password"} name="password" placeholder="Digite sua senha" value={formData.password} onChange={handleChange} autoComplete="current-password" />
             <button type="button" onClick={() => setShowPassword((v) => !v)}>{showPassword ? "Ocultar" : "Mostrar"}</button>
           </div>
         </label>
 
-        <div className="login-options">
-          <label><input type="checkbox" /> <span>Lembrar de mim</span></label>
-          <button type="button">Esqueci minha senha</button>
-        </div>
-
-        {error && <p className="login-error">{error}</p>}
-        <button className="login-submit" type="submit">Entrar no sistema</button>
+        {error && <p className="login-error" role="alert">{error}</p>}
+        <button className="login-submit" type="submit" disabled={loading}>
+          {loading ? `Entrando...` : `Entrar no sistema`}
+        </button>
 
         <div className="login-divider"><span>ou</span></div>
-        <button className="google-login" type="button" onClick={onLogin}>
+        <button className="google-login" type="button" onClick={handleGoogle}>
           <svg className="google-icon" viewBox="0 0 18 18" aria-hidden="true">
             <path fill="#4285F4" d="M17.64 9.205c0-.638-.057-1.252-.164-1.841H9v3.482h4.844a4.14 4.14 0 0 1-1.797 2.715v2.258h2.909c1.703-1.568 2.684-3.878 2.684-6.614Z" />
             <path fill="#34A853" d="M9 18c2.43 0 4.468-.806 5.956-2.181l-2.909-2.258c-.806.54-1.835.859-3.047.859-2.344 0-4.328-1.585-5.037-3.714H.956v2.332A9 9 0 0 0 9 18Z" />
