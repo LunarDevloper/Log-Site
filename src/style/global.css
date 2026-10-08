@@ -1,17 +1,18 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap');
 
 :root {
-    --bg: #0d0b1e;
-    --bg2: #110e22;
-    --card: #18152d;
-    --surface: #0f0d20;
-    --border: rgba(124, 58, 237, .18);
-    --purple: #6C00E9;
-    --neon: #C915FC;
-    --border1: #DB5EE9;
-    --text: #f1efff;
-    --muted: #8b82a8;
-    --dim: #5a5278;
+    --bg: #0f0f14;
+    --bg2: #15151c;
+    --card: #191920;
+    --surface: #121218;
+    --border: rgba(255, 255, 255, .08);
+    --purple: #6a4fe0;
+    --neon: #b4a2ff;
+    --border1: #8d79f0;
+    --text: #ececf1;
+    --muted: #9b9aa8;
+    --dim: #686775;
+    --amber: #e0a43a;
     --green: #22c55e;
     --sidebar: 220px
 }
@@ -30,11 +31,17 @@ body,
 body {
     background: var(--bg);
     color: var(--text);
-    font-family: Inter, sans-serif
+    font-family: 'IBM Plex Sans', system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased
 }
 
 button,input,select {
     font: inherit
+}
+
+.mono {
+    font-family: 'IBM Plex Mono', ui-monospace, monospace;
+    letter-spacing: .01em
 }
 
 footer {

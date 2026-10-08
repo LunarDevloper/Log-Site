@@ -26,8 +26,8 @@
     width: min(440px, 100%);
     padding: 34px;
     text-align: left;
-    border: 1px solid rgba(168, 85, 247, .35);
-    box-shadow: 0 0 0 1px rgba(124, 58, 237, .08), 0 28px 80px rgba(0, 0, 0, .5), 0 0 45px rgba(124, 58, 237, .13);
+    border: 1px solid var(--border);
+    box-shadow: 0 24px 60px rgba(0, 0, 0, .45);
 }
 
 .login-centered-logo {
@@ -79,9 +79,7 @@
     align-items: center;
     padding: clamp(40px, 7vw, 110px);
     background:
-        radial-gradient(circle at 25% 25%, rgba(168, 85, 247, .24), transparent 32%),
-        radial-gradient(circle at 75% 70%, rgba(59, 130, 246, .16), transparent 35%),
-        linear-gradient(145deg, #0f0d20, #17112f 58%, #0d0b1e);
+        var(--surface);
 }
 
 .login-showcase::before,
@@ -90,6 +88,7 @@
     position: absolute;
     border: 1px solid rgba(168, 85, 247, .13);
     border-radius: 50%;
+    display: none;
 }
 
 .login-showcase::before {
@@ -303,13 +302,12 @@
 .login-submit {
     width: 100%;
     min-height: 50px;
-    border: 1px solid rgba(168, 85, 247, .45);
-    border-radius: 11px;
+    border: 0;
+    border-radius: 8px;
     background: var(--purple);
     color: #fff;
-    font-weight: 800;
+    font-weight: 600;
     cursor: pointer;
-    box-shadow: 0 7px 20px rgba(124, 58, 237, .25);
 }
 
 .login-submit:hover {

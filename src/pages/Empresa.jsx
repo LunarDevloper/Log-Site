@@ -4,6 +4,7 @@ import PageHeader from '../components/PageHeader';
 import Popup from '../components/Popup';
 import { EmptyState, ErrorBanner } from '../components/Feedback';
 import { API_BASE, friendlyError, networkError } from '../lib/api';
+import { cleanCnpj, formatCep, formatPhone, isValidCnpj, lookupCnpj, maskCnpj } from '../lib/cnpj';
 
 function formatDate(value) {
   if (!value) return `--`;
@@ -25,6 +26,9 @@ export default function Empresa({ onSelect, selectedId }) {
   const [showCreate, setShowCreate] = useState(false);
   const [name, setName] = useState(``);
   const [description, setDescription] = useState(``);
+  const [cnpj, setCnpj] = useState(``);
+  const [company, setCompany] = useState(null);
+  const [lookup, setLookup] = useState(`idle`);
   const [saving, setSaving] = useState(false);
   const [openingId, setOpeningId] = useState(null);
   const [detail, setDetail] = useState(null);
@@ -59,11 +63,50 @@ export default function Empresa({ onSelect, selectedId }) {
     loadGroups();
   }, [loadGroups]);
 
+  // Consulta a Receita quando o CNPJ fica completo e válido
+  useEffect(() => {
+    setCompany(null);
+    const clean = cleanCnpj(cnpj);
+    if (clean.length < 14) {
+      setLookup(`idle`);
+      return;
+    }
+    if (!isValidCnpj(clean)) {
+      setLookup(`invalid`);
+      return;
+    }
+
+    const controller = new AbortController();
+    setLookup(`loading`);
+    const timer = setTimeout(async () => {
+      try {
+        const info = await lookupCnpj(clean, controller.signal);
+        if (!info) {
+          setLookup(`notfound`);
+          return;
+        }
+        setCompany(info);
+        setLookup(`found`);
+        setName((prev) => prev || (info.nomeFantasia || info.razaoSocial).slice(0, 64));
+        setDescription((prev) => prev || info.atividade.slice(0, 500));
+      } catch (err) {
+        if (err?.name !== `AbortError`) setLookup(`error`);
+      }
+    }, 350);
+
+    return () => {
+      clearTimeout(timer);
+      controller.abort();
+    };
+  }, [cnpj]);
+
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     if (!q) return groups;
+    const qCnpj = cleanCnpj(q);
     return groups.filter((g) =>
-      `${g.name ?? ``} ${g.description ?? ``}`.toLowerCase().includes(q),
+      `${g.name ?? ``} ${g.description ?? ``}`.toLowerCase().includes(q) ||
+      (qCnpj.length >= 3 && (g.cnpj ?? ``).includes(qCnpj)),
     );
   }, [groups, query]);
 
@@ -78,6 +121,15 @@ export default function Empresa({ onSelect, selectedId }) {
       setError(`O nome passou de 64 caracteres. Encurte um pouco.`);
       return;
     }
+    if (!description.trim()) {
+      setError(`Escreva uma descrição curta para a empresa.`);
+      return;
+    }
+    const cleanedCnpj = cleanCnpj(cnpj);
+    if (cleanedCnpj && !isValidCnpj(cleanedCnpj)) {
+      setError(`Esse CNPJ não é válido. Confira os números.`);
+      return;
+    }
     setSaving(true);
     setError(null);
     try {
@@ -85,7 +137,11 @@ export default function Empresa({ onSelect, selectedId }) {
         method: `POST`,
         headers: { 'Content-Type': `application/json` },
         credentials: `include`,
-        body: JSON.stringify({ name: trimmedName.slice(0, 64), description: description.trim().slice(0, 500) }),
+        body: JSON.stringify({
+          name: trimmedName.slice(0, 64),
+          description: description.trim().slice(0, 500),
+          cnpj: cleanedCnpj || null,
+        }),
       });
       const data = await response.json().catch(() => ({}));
       if (!response.ok) {
@@ -101,6 +157,7 @@ export default function Empresa({ onSelect, selectedId }) {
       }
       setName(``);
       setDescription(``);
+      setCnpj(``);
       setShowCreate(false);
     } catch {
       setError(networkError(`criar a empresa`));
@@ -146,8 +203,48 @@ export default function Empresa({ onSelect, selectedId }) {
       </div>
 
       {showCreate && (
-        <Card title="Criar empresa" subtitle="Nome até 64 caracteres, descrição até 500">
+        <Card title="Criar empresa" subtitle="Comece pelo CNPJ: buscamos os dados na Receita e preenchemos o resto">
           <form onSubmit={handleCreate} className="stock-form">
+            <label className="form-field form-field--full"><span>CNPJ (opcional)</span>
+              <input
+                className="mono"
+                placeholder="00.000.000/0000-00"
+                value={cnpj}
+                onChange={(e) => setCnpj(maskCnpj(e.target.value))}
+                inputMode="text"
+                autoComplete="off"
+              />
+              {lookup === `loading` && <small>Consultando a Receita...</small>}
+              {lookup === `invalid` && <small className="field-warn">CNPJ inválido. Confira os dígitos.</small>}
+              {lookup === `notfound` && <small className="field-warn">Não achamos esse CNPJ na consulta pública. Dá pra criar mesmo assim.</small>}
+              {lookup === `error` && <small className="field-warn">A consulta está fora do ar agora. Dá pra criar mesmo assim.</small>}
+            </label>
+
+            {company && (
+              <div className="company-sheet form-field--full">
+                <div className="company-sheet__head">
+                  <div>
+                    <strong>{company.razaoSocial || `--`}</strong>
+                    {company.nomeFantasia && <small>{company.nomeFantasia}</small>}
+                  </div>
+                  {company.situacao && (
+                    <span className={`status-tag ${company.situacao.toUpperCase() === `ATIVA` ? `status-tag--ok` : `status-tag--warn`}`}>
+                      {company.situacao}
+                    </span>
+                  )}
+                </div>
+                <dl>
+                  <div className="company-sheet__wide"><dt>Endereço</dt><dd>{company.endereco || `--`}</dd></div>
+                  <div><dt>Cidade</dt><dd>{company.cidade || `--`}</dd></div>
+                  <div><dt>CEP</dt><dd className="mono">{formatCep(company.cep) || `--`}</dd></div>
+                  <div className="company-sheet__wide"><dt>Atividade principal</dt><dd>{company.atividade || `--`}</dd></div>
+                  <div><dt>Abertura</dt><dd>{formatDate(company.abertura ? `${company.abertura}T12:00:00` : null)}</dd></div>
+                  <div><dt>Telefone</dt><dd className="mono">{formatPhone(company.telefone) || `--`}</dd></div>
+                  {company.email && <div className="company-sheet__wide"><dt>E-mail</dt><dd>{company.email.toLowerCase()}</dd></div>}
+                </dl>
+              </div>
+            )}
+
             <label className="form-field"><span>Nome</span>
               <input
                 placeholder="Ex: Depósito A"
@@ -156,7 +253,7 @@ export default function Empresa({ onSelect, selectedId }) {
                 maxLength={64}
               />
             </label>
-            <label className="form-field"><span>Descrição (opcional)</span>
+            <label className="form-field"><span>Descrição</span>
               <input
                 placeholder="Estoque principal..."
                 value={description}
@@ -166,7 +263,7 @@ export default function Empresa({ onSelect, selectedId }) {
             </label>
             <div className="form-actions form-field--full">
               <button className="primary-button" type="submit" disabled={saving}>
-                {saving ? `Criando...` : `Criar e entrar →`}
+                {saving ? `Criando...` : `Criar e entrar`}
               </button>
             </div>
           </form>
@@ -217,8 +314,9 @@ export default function Empresa({ onSelect, selectedId }) {
                       {group.name ?? `--`}
                     </strong>
                     <small style={{ color: `var(--muted)` }}>
-                      {active ? `Ativa agora ✓` : `Criada em ${formatDate(group.createdAt)}`}
+                      {active ? `Ativa agora` : `Criada em ${formatDate(group.createdAt)}`}
                     </small>
+                    {group.cnpj && <small className="mono" style={{ display: `block`, color: `var(--dim)` }}>{maskCnpj(group.cnpj)}</small>}
                   </div>
                 </div>
                 <p style={{ margin: 0, color: `var(--muted)`, fontSize: 12, minHeight: 32 }}>
@@ -231,7 +329,7 @@ export default function Empresa({ onSelect, selectedId }) {
                   disabled={opening}
                   style={{ width: `100%`, minHeight: 46, fontSize: 14 }}
                 >
-                  {active ? `Entrar novamente →` : opening ? `Entrando...` : `Entrar →`}
+                  {active ? `Entrar novamente` : opening ? `Entrando...` : `Entrar`}
                 </button>
               </div>
             );
@@ -239,8 +337,8 @@ export default function Empresa({ onSelect, selectedId }) {
         </div>
         {!loading && filtered.length === 0 && (
           groups.length === 0
-            ? <EmptyState icon="🏢" title="Você ainda não tem empresas" subtitle="Crie a primeira para liberar o painel, o estoque e a equipe." actionLabel="+ Criar minha primeira empresa" onAction={() => setShowCreate(true)} />
-            : <EmptyState icon="🔍" title="Nada com esse nome" subtitle="Ajuste a pesquisa para achar sua empresa." />
+            ? <EmptyState title="Você ainda não tem empresas" subtitle="Crie a primeira para liberar o painel, o estoque e a equipe." actionLabel="+ Criar minha primeira empresa" onAction={() => setShowCreate(true)} />
+            : <EmptyState title="Nada com esse nome" subtitle="Ajuste a pesquisa para achar sua empresa." />
         )}
       </Card>
 
@@ -248,7 +346,7 @@ export default function Empresa({ onSelect, selectedId }) {
         open={!!detail}
         onClose={() => setDetail(null)}
         title={detail?.name ?? `Grupo`}
-        subtitle={[detail?.description, detail?.id ? `ID: ${detail.id}` : null].filter(Boolean).join(` — `)}
+        subtitle={[detail?.description, detail?.cnpj ? `CNPJ ${maskCnpj(detail.cnpj)}` : null, detail?.id ? `ID: ${detail.id}` : null].filter(Boolean).join(` — `)}
       />
     </div>
   );

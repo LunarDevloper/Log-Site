@@ -19,7 +19,7 @@
     justify-content: space-between;
     padding: 0 24px;
     border-bottom: 1px solid var(--border);
-    background: rgba(13, 11, 30, .88);
+    background: var(--bg);
 }
 
 .search {
@@ -121,8 +121,8 @@
 .primary-button {
     min-height: 42px;
     padding: 0 18px;
-    border: 1px solid rgba(168, 85, 247, .45);
-    border-radius: 9px;
+    border: 0;
+    border-radius: 8px;
     background: var(--purple);
     color: #fff;
     font-weight: 600;
@@ -160,7 +160,7 @@
 .form-field > span {
     color: var(--muted);
     font-size: 12px;
-    font-weight: 700;
+    font-weight: 600;
 }
 
 .form-field input,
@@ -189,7 +189,7 @@
 }
 
 .number-control:focus-within {
-    border-color: rgba(124, 58, 237, .45);
+    border-color: var(--border1);
 }
 
 .number-control input {
@@ -257,7 +257,7 @@
 
 .form-field input:focus,
 .form-field textarea:focus {
-    border-color: var(--neon);
+    border-color: var(--border1);
 }
 
 .form-field input[readonly] {
@@ -291,4 +291,94 @@
 .secondary-button:disabled {
     cursor: not-allowed;
     opacity: .6;
+}
+
+.form-field small.field-warn {
+    color: var(--amber);
+}
+
+/* Ficha da empresa (consulta de CNPJ) */
+.company-sheet {
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--border1);
+    border-radius: 8px;
+    background: var(--bg2);
+    padding: 14px 16px;
+}
+
+.company-sheet__head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+    padding-bottom: 12px;
+    border-bottom: 1px dashed var(--border);
+}
+
+.company-sheet__head strong {
+    display: block;
+    font-size: 15px;
+}
+
+.company-sheet__head small {
+    color: var(--muted);
+    font-size: 12px;
+}
+
+.company-sheet dl {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 12px 18px;
+    margin: 12px 0 0;
+}
+
+.company-sheet dl > div {
+    min-width: 0;
+}
+
+.company-sheet__wide {
+    grid-column: span 2;
+}
+
+.company-sheet dt {
+    color: var(--dim);
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+}
+
+.company-sheet dd {
+    margin: 3px 0 0;
+    font-size: 13px;
+    overflow-wrap: anywhere;
+}
+
+.status-tag {
+    flex-shrink: 0;
+    padding: 3px 8px;
+    border: 1px solid currentColor;
+    border-radius: 4px;
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+}
+
+.status-tag--ok {
+    color: var(--green);
+}
+
+.status-tag--warn {
+    color: var(--amber);
+}
+
+@media (max-width: 640px) {
+    .company-sheet dl {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .company-sheet__wide {
+        grid-column: auto;
+    }
 }

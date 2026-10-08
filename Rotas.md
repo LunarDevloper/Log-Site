@@ -199,8 +199,10 @@ Todas exigem auth, salvo o que estiver dito. `:groupId` UUID.
 ### `POST /groups/create`
 
 ```json
-{ "name": "Depósito A", "description": "Estoque principal" }
+{ "name": "Depósito A", "description": "Estoque principal", "cnpj": "12.345.678/0001-95" }
 ```
+
+`cnpj` é opcional. Aceita com ou sem máscara (numérico ou alfanumérico); é salvo sem máscara e validado pelos dígitos verificadores. Cada CNPJ só pode estar em um grupo.
 
 Cria grupo, cargo Admin (rank 0, todas as perms) e coloca o usuário como owner.
 
@@ -211,6 +213,7 @@ Cria grupo, cargo Admin (rank 0, todas as perms) e coloca o usuário como owner.
   "id": "uuid",
   "name": "Depósito A",
   "description": "Estoque principal",
+  "cnpj": "12345678000195",
   "owner": { "UID": "uuid", "DisplayName": "Rafael" },
   "members": ["uuid"],
   "createdAt": 1730000000000,
@@ -218,13 +221,13 @@ Cria grupo, cargo Admin (rank 0, todas as perms) e coloca o usuário como owner.
 }
 ```
 
-**400** nome/descrição ausentes ou `Unable to create group`.
+**400** nome/descrição ausentes, `Invalid CNPJ` ou `Unable to create group` (inclui CNPJ já usado por outro grupo).
 
 ### `GET /groups/listgroups`
 
 Grupos em que o usuário é membro.
 
-**200** `{ "groups": [{ "id", "name", "description", "ownerId", "createdAt", "updatedAt" }] }`
+**200** `{ "groups": [{ "id", "name", "description", "cnpj", "ownerId", "createdAt", "updatedAt" }] }`
 
 ### `GET /groups/:groupId`
 

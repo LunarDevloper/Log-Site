@@ -167,29 +167,24 @@
     background: #22c55e;
 }
 .card {
-    background:rgba(24, 21, 45, .95);
+    background: var(--card);
     border: 1px solid var(--border);
-    border-radius: 20px;
+    border-radius: 12px;
     padding: 16px;
     min-width: 0;
 }
 
 .card-header h3 {
     margin: 0;
-    font-size: 0.8rem;
-    font-weight: 800;
-    background-color: var(--bg2);
-    padding: 10px;
-    border-radius: 100px;
+    font-size: 0.9rem;
+    font-weight: 600;
 
 }
 
 .card-header p {
     margin: 4px 0 15px;
     color: var(--muted);
-    font-size: 11px;
-    font-size: 0.7rem;
-    padding-left: 10px;
+    font-size: 0.75rem;
 }
 
 .kpi-grid {
@@ -246,7 +241,9 @@
     gap: 8px
 }
 
+/* sem selo de emoji nos estados vazios */
 .empty-icon {
+    display: none !important;
     width: 44px;
     height: 44px;
     border-radius: 50%;

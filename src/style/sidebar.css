@@ -69,8 +69,9 @@
 
 .sidebar nav button:hover,
 .sidebar nav button.active {
-    background: rgba(83, 27, 180, .385);
-    color: var(--neon);
+    background: rgba(255, 255, 255, .05);
+    color: var(--text);
+    box-shadow: inset 2px 0 0 var(--border1);
 }
 
 /* Usuário */
