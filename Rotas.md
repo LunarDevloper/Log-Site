@@ -21,10 +21,10 @@ Não há rotas HTTP para `robots` / `robot_logs` (existem no banco).
 | `DATABASE_URL` | Postgres Neon (domínio) |
 | `REDIS_URL` | Cache opcional |
 | `CLIENT_URL` | Origem CORS e redirect pós-login (site) |
-| `AUTH_CALLBACK_URL` | Redirect OAuth/e-mail → API (`…/auth/callback`) |
+| `AUTH_CALLBACK_URL` | Redirect da confirmação de e-mail → API (`…/auth/callback`) |
 | `AUTH_SUCCESS_URL` | Opcional; override do redirect depois da sessão |
 
-`AUTH_CALLBACK_URL` tem que estar nas Redirect URLs do Supabase. Google Cloud usa a callback **do Supabase** (`https://<ref>.supabase.co/auth/v1/callback`), não a do Express.
+`AUTH_CALLBACK_URL` tem que estar nas Redirect URLs do Supabase.
 
 Na Vercel o app vira uma Function (`index.ts` exporta o Express). `NODE_ENV=production` já vem da plataforma. **Não** defina `REDIS_URL` (localhost não existe lá). Depois do domínio `*.vercel.app`:
 
@@ -63,7 +63,6 @@ Rate limit:
 | Onde | Limite |
 |------|--------|
 | Signup, login, `POST /auth/session` | 5 / 15 min |
-| `GET /auth/google` | 10 / 15 min |
 | `POST /groups/create` | 10 / hora |
 | Demais `/groups` | 30 / 15 min |
 
@@ -162,17 +161,13 @@ Confirmação de e-mail ligada → `sessionCreated: false`. E-mail já cadastrad
 
 **200** `{ "user", "expiresAt" }` (`expiresAt` Unix s ou `null`) · **401** credenciais.
 
-### `GET /auth/google`
-
-**303** para o Google (`redirectTo` = `AUTH_CALLBACK_URL`). Testar no **navegador**. **500** se o provider não estiver configurado.
-
 ### `GET /auth/callback`
 
-Query: `code` (OAuth/PKCE), ou `token_hash` + `type` (e-mail). Hash `#access_token` usa `confirm-hash.js` + `POST /auth/session`.
+Query: `code` (PKCE), ou `token_hash` + `type` (e-mail). Hash `#access_token` usa `confirm-hash.js` + `POST /auth/session`.
 
 Sucesso: **303** para `AUTH_SUCCESS_URL` ou `CLIENT_URL`. Se `CLIENT_URL` for a raiz desta API, redireciona para `/auth/me`. Sem URL de site: HTML ou `{ "authenticated": true }`.
 
-Erros OAuth: `error` / `error_description`.
+Erros do Supabase: `error` / `error_description`.
 
 ### `GET /auth/confirm-hash.js`
 
@@ -477,7 +472,6 @@ Owner não sai. Sair do próprio grupo: sem `AddRole`. Tirar outra pessoa: `AddR
 | GET | `/` | callback |
 | POST | `/auth/signup` | não |
 | POST | `/auth/login` | não |
-| GET | `/auth/google` | não |
 | GET | `/auth/callback` | callback |
 | GET | `/auth/confirm-hash.js` | não |
 | POST | `/auth/session` | não |
