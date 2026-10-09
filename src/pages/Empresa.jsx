@@ -5,6 +5,7 @@ import Popup from '../components/Popup';
 import { EmptyState, ErrorBanner } from '../components/Feedback';
 import { API_BASE, friendlyError, networkError } from '../lib/api';
 import { cleanCnpj, formatCep, formatPhone, isValidCnpj, lookupCnpj, maskCnpj } from '../lib/cnpj';
+import { formatInviteCode, isValidInviteCode, normalizeInviteCode } from '../lib/invite';
 
 function formatDate(value) {
   if (!value) return `--`;
@@ -18,7 +19,7 @@ function initial(name) {
   return (t[0] ?? `?`).toUpperCase();
 }
 
-export default function Empresa({ onSelect, selectedId }) {
+export default function Empresa({ onSelect, onInviteCode, selectedId }) {
   const [groups, setGroups] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -32,6 +33,8 @@ export default function Empresa({ onSelect, selectedId }) {
   const [saving, setSaving] = useState(false);
   const [openingId, setOpeningId] = useState(null);
   const [detail, setDetail] = useState(null);
+  const [showJoin, setShowJoin] = useState(false);
+  const [joinCode, setJoinCode] = useState(``);
 
   const loadGroups = useCallback(async () => {
     setLoading(true);
@@ -166,6 +169,18 @@ export default function Empresa({ onSelect, selectedId }) {
     }
   }
 
+  function handleJoin(e) {
+    e.preventDefault();
+    const code = normalizeInviteCode(joinCode);
+    if (!isValidInviteCode(code)) {
+      setError(`Esse código não parece certo. Ele tem 8 letras e números, tipo K7P2-9XQM.`);
+      return;
+    }
+    setJoinCode(``);
+    setShowJoin(false);
+    if (onInviteCode) onInviteCode(code);
+  }
+
   async function handleOpen(group) {
     if (onSelect) {
       setOpeningId(group.id);
@@ -197,10 +212,33 @@ export default function Empresa({ onSelect, selectedId }) {
         <button className="secondary-button" type="button" onClick={loadGroups} disabled={loading}>
           {loading ? `Carregando...` : `Atualizar`}
         </button>
-        <button className="primary-button" type="button" onClick={() => setShowCreate((v) => !v)}>
+        {onInviteCode && (
+          <button className="secondary-button" type="button" onClick={() => { setShowJoin((v) => !v); setShowCreate(false); }}>
+            {showJoin ? `Fechar` : `Tenho um convite`}
+          </button>
+        )}
+        <button className="primary-button" type="button" onClick={() => { setShowCreate((v) => !v); setShowJoin(false); }}>
           {showCreate ? `Fechar` : `+ Nova empresa`}
         </button>
       </div>
+
+      {showJoin && (
+        <Card title="Entrar com convite" subtitle="Cole o código ou o link que você recebeu">
+          <form onSubmit={handleJoin} className="toolbar" style={{ margin: 0 }}>
+            <input
+              className="mono"
+              placeholder="K7P2-9XQM"
+              value={joinCode}
+              onChange={(e) => {
+                const match = e.target.value.match(/convite=([\w-]+)/i);
+                setJoinCode(formatInviteCode(match ? match[1] : e.target.value).slice(0, 9));
+              }}
+              autoComplete="off"
+            />
+            <button className="primary-button" type="submit">Continuar</button>
+          </form>
+        </Card>
+      )}
 
       {showCreate && (
         <Card title="Criar empresa" subtitle="Comece pelo CNPJ: buscamos os dados na Receita e preenchemos o resto">
@@ -337,7 +375,7 @@ export default function Empresa({ onSelect, selectedId }) {
         </div>
         {!loading && filtered.length === 0 && (
           groups.length === 0
-            ? <EmptyState title="Você ainda não tem empresas" subtitle="Crie a primeira para liberar o painel, o estoque e a equipe." actionLabel="+ Criar minha primeira empresa" onAction={() => setShowCreate(true)} />
+            ? <EmptyState title="Você ainda não tem empresas" subtitle="Crie a primeira ou entre na da sua equipe com um convite." actionLabel="+ Criar minha primeira empresa" onAction={() => setShowCreate(true)} />
             : <EmptyState title="Nada com esse nome" subtitle="Ajuste a pesquisa para achar sua empresa." />
         )}
       </Card>

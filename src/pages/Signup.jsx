@@ -4,7 +4,7 @@ import Popup from "../components/Popup";
 
 const API_BASE = (import.meta.env.VITE_API_URL ?? "https://buddylog-rosy.vercel.app").replace(/\/$/, "");
 
-export default function Signup({ onBackToLogin }) {
+export default function Signup({ onBackToLogin, invited }) {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [popupOpen, setPopupOpen] = useState(false);
@@ -121,7 +121,7 @@ export default function Signup({ onBackToLogin }) {
         <div className="login-heading login-heading--centered">
           <span>Bem-vindo</span>
           <h1>Crie sua conta</h1>
-          <p>Insira seu nome, e-mail e senha</p>
+          <p>{invited ? `Crie sua conta e depois entre para aceitar o convite.` : `Insira seu nome, e-mail e senha`}</p>
         </div>
 
         <label className="login-field">

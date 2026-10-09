@@ -10,7 +10,9 @@ import Equipe from "./pages/Equipe";
 import Login from "./pages/Login";
 import Signup from "./pages/Signup";
 import Placeholder from "./pages/Placeholder";
+import Convite from "./pages/Convite";
 import { API_BASE } from "./lib/api";
+import { clearPendingInvite, loadPendingInvite, storePendingInvite, takeInviteFromUrl } from "./lib/invite";
 const STORAGE_KEY = "buddylog.group";
 
 function loadStoredGroup() {
@@ -28,6 +30,7 @@ export default function App() {
   const [page, setPage] = useState("Empresa");
   const [menuOpen, setMenuOpen] = useState(false);
   const [selectedGroup, setSelectedGroup] = useState(loadStoredGroup);
+  const [invite, setInvite] = useState(() => takeInviteFromUrl() ?? loadPendingInvite());
 
   useEffect(() => {
     let cancelled = false;
@@ -53,6 +56,21 @@ export default function App() {
     setPage("Dashboard");
   }
 
+  function handleOpenInvite(code) {
+    storePendingInvite(code);
+    setInvite(code);
+  }
+
+  function closeInvite() {
+    clearPendingInvite();
+    setInvite(null);
+  }
+
+  function handleInviteAccepted(group) {
+    closeInvite();
+    handleSelectGroup(group);
+  }
+
   async function handleLogout() {
     try {
       await fetch(`${API_BASE}/auth/logout`, { method: "POST", credentials: "include" });
@@ -71,9 +89,21 @@ export default function App() {
 
   if (!loggedIn) {
     return authPage === "login" ? (
-      <Login onLogin={() => setLoggedIn(true)} onSignup={() => setAuthPage("signup")} />
+      <Login invited={!!invite} onLogin={() => setLoggedIn(true)} onSignup={() => setAuthPage("signup")} />
     ) : (
-      <Signup onBackToLogin={() => setAuthPage("login")} />
+      <Signup invited={!!invite} onBackToLogin={() => setAuthPage("login")} />
+    );
+  }
+
+  if (invite) {
+    return (
+      <div className="app-shell">
+        <div className="main-wrap">
+          <Navbar onMenu={() => {}} onLogout={handleLogout} />
+          <main className="main-content"><Convite code={invite} onAccepted={handleInviteAccepted} onCancel={closeInvite} /></main>
+          <footer>© 2026 Buddy Log</footer>
+        </div>
+      </div>
     );
   }
 
@@ -82,7 +112,7 @@ export default function App() {
       <div className="app-shell">
         <div className="main-wrap">
           <Navbar onMenu={() => {}} onLogout={handleLogout} />
-          <main className="main-content"><Empresa onSelect={handleSelectGroup} /></main>
+          <main className="main-content"><Empresa onSelect={handleSelectGroup} onInviteCode={handleOpenInvite} /></main>
           <footer>© 2026 Buddy Log</footer>
         </div>
       </div>
@@ -92,7 +122,7 @@ export default function App() {
   const pages = {
     Dashboard: <Dashboard group={selectedGroup} />,
     Estoque: <Estoque group={selectedGroup} />,
-    Empresa: <Empresa onSelect={handleSelectGroup} selectedId={selectedGroup.id} />,
+    Empresa: <Empresa onSelect={handleSelectGroup} onInviteCode={handleOpenInvite} selectedId={selectedGroup.id} />,
     "Movimentações": <Movimentacoes group={selectedGroup} />,
     Equipe: <Equipe group={selectedGroup} />,
     Pedidos: <Placeholder group={selectedGroup} title="Pedidos" subtitle="Acompanhamento dos pedidos" columns={['Pedido', 'Cliente', 'Data', 'Prioridade', 'Status']} stats={['Pendentes', 'Separando', 'Transporte', 'Concluídos']} icon="🧾" emptyTitle="Pedidos em breve" emptySubtitle="A área de pedidos ainda está em construção. O estoque e as movimentações já funcionam." />,

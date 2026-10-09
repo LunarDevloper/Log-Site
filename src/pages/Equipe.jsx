@@ -3,6 +3,7 @@ import Card from '../components/Card';
 import PageHeader from '../components/PageHeader';
 import { EmptyState, ErrorBanner } from '../components/Feedback';
 import { API_BASE, friendlyError, networkError } from '../lib/api';
+import { formatInviteCode, inviteLink } from '../lib/invite';
 
 const PERM_KEYS = [`CreateItem`, `DeleteItem`, `AddItemToInventory`, `RemoveItemFromInventory`, `ViewInventory`, `ViewItemHistory`, `CreateRole`, `AddRole`, `RemoveRole`];
 
@@ -17,6 +18,25 @@ const PERM_LABELS = {
   AddRole: `Gerenciar equipe`,
   RemoveRole: `Excluir cargo`,
 };
+
+const INVITE_DAYS = [
+  { value: 1, label: `1 dia` },
+  { value: 7, label: `7 dias` },
+  { value: 30, label: `30 dias` },
+];
+
+const INVITE_USES = [
+  { value: `1`, label: `1 pessoa` },
+  { value: `5`, label: `Até 5 pessoas` },
+  { value: `25`, label: `Até 25 pessoas` },
+  { value: ``, label: `Sem limite` },
+];
+
+function formatExpires(value) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return `--`;
+  return date.toLocaleDateString(`pt-BR`, { day: `2-digit`, month: `2-digit` });
+}
 
 function emptyPerms() {
   return Object.fromEntries(PERM_KEYS.map((k) => [k, false]));
@@ -34,8 +54,13 @@ export default function Equipe({ group }) {
   const [perms, setPerms] = useState(emptyPerms);
   const [saving, setSaving] = useState(false);
   const [editing, setEditing] = useState(null);
-  const [newUserId, setNewUserId] = useState(``);
-  const [newRoleId, setNewRoleId] = useState(``);
+  const [invites, setInvites] = useState([]);
+  const [canInvite, setCanInvite] = useState(false);
+  const [inviteRoleId, setInviteRoleId] = useState(``);
+  const [inviteDays, setInviteDays] = useState(7);
+  const [inviteUses, setInviteUses] = useState(`1`);
+  const [creatingInvite, setCreatingInvite] = useState(false);
+  const [copiedCode, setCopiedCode] = useState(null);
 
   const load = useCallback(async () => {
     if (!group?.id) {
@@ -46,11 +71,18 @@ export default function Equipe({ group }) {
     setLoading(true);
     setError(null);
     try {
-      const [rolesRes, membersRes, assignRes] = await Promise.all([
+      const [rolesRes, membersRes, assignRes, invitesRes] = await Promise.all([
         fetch(`${API_BASE}/groups/${group.id}/roles`, { credentials: `include` }),
         fetch(`${API_BASE}/groups/${group.id}/members`, { credentials: `include` }),
         fetch(`${API_BASE}/groups/getassignableperms/${group.id}`, { credentials: `include` }),
+        fetch(`${API_BASE}/groups/${group.id}/invites`, { credentials: `include` }),
       ]);
+      // Sem a perm de gerenciar equipe o servidor responde 403: só esconde os convites
+      setCanInvite(invitesRes.ok);
+      if (invitesRes.ok) {
+        const d = await invitesRes.json().catch(() => ({}));
+        setInvites(Array.isArray(d.invites) ? d.invites : []);
+      } else setInvites([]);
       let failed = 0;
       if (rolesRes.ok) {
         const d = await rolesRes.json().catch(() => ({}));
@@ -156,22 +188,53 @@ export default function Equipe({ group }) {
     }
   }
 
-  async function handleAddMember(e) {
+  async function handleCreateInvite(e) {
     e.preventDefault();
-    if (!newUserId.trim() || !newRoleId) { setError(`Cole o ID do usuário e escolha o cargo para adicionar.`); return; }
+    if (!inviteRoleId) { setError(`Escolha o cargo que a pessoa vai ter ao entrar.`); return; }
+    setCreatingInvite(true);
     try {
-      const response = await fetch(`${API_BASE}/groups/${group.id}/members`, {
+      const response = await fetch(`${API_BASE}/groups/${group.id}/invites`, {
         method: `POST`,
         headers: { 'Content-Type': `application/json` },
         credentials: `include`,
-        body: JSON.stringify({ userId: newUserId.trim(), roleId: newRoleId }),
+        body: JSON.stringify({ roleId: inviteRoleId, days: inviteDays, maxUses: inviteUses ? Number(inviteUses) : null }),
       });
       const data = await response.json().catch(() => ({}));
-      if (!response.ok) { setError(friendlyError(response.status, data.error, `Não foi possível adicionar. Confira se o usuário já tem conta.`)); return; }
-      setNewUserId(``); setNewRoleId(``);
-      load();
+      if (!response.ok || !data.invite) {
+        setError(friendlyError(response.status, response.status === 400 ? null : data.error, `Não deu para gerar o convite. Você pode ter 20 convites ativos no máximo.`));
+        return;
+      }
+      setInvites((prev) => [data.invite, ...prev]);
+      handleCopyInvite(data.invite.code);
     } catch {
-      setError(networkError(`adicionar o membro`));
+      setError(networkError(`gerar o convite`));
+    } finally {
+      setCreatingInvite(false);
+    }
+  }
+
+  async function handleCopyInvite(code) {
+    try {
+      await navigator.clipboard.writeText(inviteLink(code));
+      setCopiedCode(code);
+      setTimeout(() => setCopiedCode((c) => (c === code ? null : c)), 2000);
+    } catch {
+      /* sem permissão de clipboard: o link continua visível para copiar à mão */
+    }
+  }
+
+  async function handleRevokeInvite(code) {
+    if (!confirm(`Cancelar o convite ${formatInviteCode(code)}? Quem ainda não entrou não vai conseguir usar.`)) return;
+    try {
+      const response = await fetch(`${API_BASE}/groups/${group.id}/invites/${code}`, {
+        method: `DELETE`,
+        credentials: `include`,
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok && response.status !== 404) { setError(friendlyError(response.status, data.error, `Não foi possível cancelar o convite.`)); return; }
+      setInvites((prev) => prev.filter((i) => i.code !== code));
+    } catch {
+      setError(networkError(`cancelar o convite`));
     }
   }
 
@@ -273,19 +336,57 @@ export default function Equipe({ group }) {
             </table></div>}
       </Card>
 
+      {canInvite && (
+        <Card title="Convidar colaborador" subtitle="Gere um link, mande no WhatsApp ou e-mail e a pessoa entra sozinha com o cargo escolhido">
+          <form onSubmit={handleCreateInvite} className="invite-form">
+            <label className="form-field"><span>Cargo</span>
+              <select value={inviteRoleId} onChange={(e) => setInviteRoleId(e.target.value)}>
+                <option value="">Escolha o cargo...</option>
+                {roles.filter((r) => r.rank >= (assignable?.minRank ?? 1)).map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}
+              </select>
+            </label>
+            <label className="form-field"><span>Validade</span>
+              <select value={inviteDays} onChange={(e) => setInviteDays(Number(e.target.value))}>
+                {INVITE_DAYS.map((d) => <option key={d.value} value={d.value}>{d.label}</option>)}
+              </select>
+            </label>
+            <label className="form-field"><span>Pode ser usado por</span>
+              <select value={inviteUses} onChange={(e) => setInviteUses(e.target.value)}>
+                {INVITE_USES.map((u) => <option key={u.label} value={u.value}>{u.label}</option>)}
+              </select>
+            </label>
+            <button className="primary-button" type="submit" disabled={creatingInvite}>
+              {creatingInvite ? `Gerando...` : `Gerar link`}
+            </button>
+          </form>
+
+          {invites.length > 0 && (
+            <ul className="invite-list">
+              {invites.map((inv) => (
+                <li key={inv.code}>
+                  <div className="invite-list__main">
+                    <strong className="mono">{formatInviteCode(inv.code)}</strong>
+                    <small>{inv.roleName} · {inv.maxUses ? `${inv.uses}/${inv.maxUses} usos` : `${inv.uses} uso(s)`} · até {formatExpires(inv.expiresAt)}</small>
+                    <input className="mono" readOnly value={inviteLink(inv.code)} onFocus={(e) => e.target.select()} aria-label="Link do convite" />
+                  </div>
+                  <div className="invite-list__actions">
+                    <button className="secondary-button" type="button" onClick={() => handleCopyInvite(inv.code)}>
+                      {copiedCode === inv.code ? `Copiado` : `Copiar link`}
+                    </button>
+                    <button className="secondary-button" type="button" onClick={() => handleRevokeInvite(inv.code)}>Cancelar</button>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
+        </Card>
+      )}
+
       <Card title="Colaboradores" subtitle={loading ? `Carregando...` : `${members.length} pessoa(s)`}>
-        <form onSubmit={handleAddMember} className="toolbar" style={{ flexWrap: `wrap` }}>
-          <input placeholder="Cole o ID do usuário (UUID)" value={newUserId} onChange={(e) => setNewUserId(e.target.value)} style={{ minWidth: 220 }} />
-          <select value={newRoleId} onChange={(e) => setNewRoleId(e.target.value)} style={{ minWidth: 180 }}>
-            <option value="">Escolha o cargo...</option>
-            {roles.map((r) => <option key={r.id} value={r.id}>{r.name} (rank {r.rank})</option>)}
-          </select>
-          <button className="primary-button" type="submit">Adicionar</button>
-        </form>
         {loading && members.length === 0
           ? <div className="table-wrap"><table><tbody>{[1, 2].map((r) => <tr key={r}><td><span className="skeleton" /></td><td><span className="skeleton" /></td></tr>)}</tbody></table></div>
           : members.length === 0
-            ? <EmptyState icon="👥" title="Só você por aqui" subtitle="Adicione colaboradores pelo ID para dividir o trabalho." />
+            ? <EmptyState icon="👥" title="Só você por aqui" subtitle="Gere um convite acima e mande o link para a sua equipe." />
             : <div className="table-wrap"><table>
               <thead><tr><th>Nome</th><th>Cargo</th><th>Tipo</th><th>Ações</th></tr></thead>
               <tbody>

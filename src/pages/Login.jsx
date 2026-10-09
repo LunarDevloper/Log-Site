@@ -2,7 +2,7 @@ import { useState } from "react";
 import logo from "../assets/logo-new.png";
 import { API_BASE, friendlyError, networkError } from "../lib/api";
 
-export default function Login({ onLogin, onSignup }) {
+export default function Login({ onLogin, onSignup, invited }) {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -61,7 +61,7 @@ export default function Login({ onLogin, onSignup }) {
         <div className="login-heading login-heading--centered">
           <span>Bem-vindo de volta</span>
           <h1>Acesse o sistema</h1>
-          <p>Entre para acompanhar sua operação logística.</p>
+          <p>{invited ? `Entre para aceitar o convite da sua equipe.` : `Entre para acompanhar sua operação logística.`}</p>
         </div>
 
         <label className="login-field">

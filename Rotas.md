@@ -65,6 +65,7 @@ Rate limit:
 | Signup, login, `POST /auth/session` | 5 / 15 min |
 | `POST /groups/create` | 10 / hora |
 | Demais `/groups` | 30 / 15 min |
+| `/invites` | 30 / 15 min |
 
 ---
 
@@ -82,6 +83,9 @@ Rate limit:
 | Cargos por grupo | 20 |
 | Quantidade / estoque de segurança | 0–100000 |
 | Histórico | últimos 100 |
+| Convites ativos por grupo | 20 |
+| Validade do convite | 1–30 dias (padrão 7) |
+| Usos por convite | 1–100 ou ilimitado |
 
 Rank: inteiro ≥ 0. **Menor rank = mais autoridade.** Rank **único** por grupo. Admin do grupo nasce com rank `0` e todas as perms.
 
@@ -464,6 +468,62 @@ Owner não sai. Sair do próprio grupo: sem `AddRole`. Tirar outra pessoa: `AddR
 
 ---
 
+## Convites
+
+Jeito fácil de colocar alguém na empresa: o admin gera um link com o cargo e manda para a pessoa. Código de 8 caracteres (`A-Z` e `2-9`, sem `0/O/1/I`); hífen e minúsculas são ignorados (`k7p2-9xqm` = `K7P29XQM`).
+
+Convite ativo = não revogado, dentro da validade e com uso disponível.
+
+### `POST /groups/:groupId/invites`
+
+Perm: `AddRole`. O cargo tem que ser gerenciável pelo ator (mesma regra de atribuir cargo).
+
+```json
+{ "roleId": "uuid", "days": 7, "maxUses": 1 }
+```
+
+`days` e `maxUses` são opcionais (`maxUses: null` = ilimitado).
+
+**201**
+
+```json
+{
+  "invite": {
+    "code": "K7P29XQM",
+    "roleId": "uuid",
+    "roleName": "Operador",
+    "maxUses": 1,
+    "uses": 0,
+    "expiresAt": 1730000000000,
+    "createdAt": 1730000000000
+  }
+}
+```
+
+**400** `Unable to create invite` (validade/usos fora do limite ou 20 convites ativos) · **403** sem perm ou cargo acima do ator.
+
+### `GET /groups/:groupId/invites`
+
+Perm: `AddRole`. **200** `{ "invites": [ ...mesmo formato... ] }` (só ativos).
+
+### `DELETE /groups/:groupId/invites/:code`
+
+Perm: `AddRole`. Revoga. **200** `{ "ok": true }` · **404** convite.
+
+### `GET /invites/:code`
+
+Qualquer usuário logado. Prévia para a tela de aceite.
+
+**200** `{ "invite": { "code", "groupId", "groupName", "roleName", "expiresAt" } }` · **404** inválido, expirado, revogado ou esgotado.
+
+### `POST /invites/:code/accept`
+
+Qualquer usuário logado. Entra no grupo com o cargo do convite e conta um uso.
+
+**200** `{ "ok": true, "groupId": "uuid" }` · **404** convite inválido · **409** `Already a member` (não gasta uso).
+
+---
+
 ## Índice de rotas
 
 | Método | Path | Auth |
@@ -501,3 +561,8 @@ Owner não sai. Sair do próprio grupo: sem `AddRole`. Tirar outra pessoa: `AddR
 | POST | `/groups/:groupId/members/role` | sim + perm |
 | POST | `/groups/:groupId/members` | sim + perm |
 | DELETE | `/groups/:groupId/members` | sim (regras acima) |
+| POST | `/groups/:groupId/invites` | sim + perm |
+| GET | `/groups/:groupId/invites` | sim + perm |
+| DELETE | `/groups/:groupId/invites/:code` | sim + perm |
+| GET | `/invites/:code` | sim |
+| POST | `/invites/:code/accept` | sim |
