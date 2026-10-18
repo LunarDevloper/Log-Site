@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import Card from '../components/Card';
 import PageHeader from '../components/PageHeader';
 import { EmptyState, ErrorBanner } from '../components/Feedback';
-import { API_BASE, friendlyError, networkError } from '../lib/api';
+import { API_BASE, cachedFetch, friendlyError, networkError, refresh } from '../lib/api';
 import { formatInviteCode, inviteLink } from '../lib/invite';
 
 const PERM_KEYS = [`CreateItem`, `DeleteItem`, `AddItemToInventory`, `RemoveItemFromInventory`, `ViewInventory`, `ViewItemHistory`, `CreateRole`, `AddRole`, `RemoveRole`];
@@ -72,10 +72,10 @@ export default function Equipe({ group }) {
     setError(null);
     try {
       const [rolesRes, membersRes, assignRes, invitesRes] = await Promise.all([
-        fetch(`${API_BASE}/groups/${group.id}/roles`, { credentials: `include` }),
-        fetch(`${API_BASE}/groups/${group.id}/members`, { credentials: `include` }),
-        fetch(`${API_BASE}/groups/getassignableperms/${group.id}`, { credentials: `include` }),
-        fetch(`${API_BASE}/groups/${group.id}/invites`, { credentials: `include` }),
+        cachedFetch(`${API_BASE}/groups/${group.id}/roles`, { credentials: `include` }),
+        cachedFetch(`${API_BASE}/groups/${group.id}/members`, { credentials: `include` }),
+        cachedFetch(`${API_BASE}/groups/getassignableperms/${group.id}`, { credentials: `include` }),
+        cachedFetch(`${API_BASE}/groups/${group.id}/invites`, { credentials: `include` }),
       ]);
       // Sem a perm de gerenciar equipe o servidor responde 403: só esconde os convites
       setCanInvite(invitesRes.ok);
@@ -121,7 +121,7 @@ export default function Equipe({ group }) {
     setSaving(true);
     setError(null);
     try {
-      const response = await fetch(`${API_BASE}/groups/${group.id}/roles`, {
+      const response = await cachedFetch(`${API_BASE}/groups/${group.id}/roles`, {
         method: `POST`,
         headers: { 'Content-Type': `application/json` },
         credentials: `include`,
@@ -140,7 +140,7 @@ export default function Equipe({ group }) {
 
   async function handleUpdateRole(role) {
     try {
-      const response = await fetch(`${API_BASE}/groups/${group.id}/roles/${role.id}`, {
+      const response = await cachedFetch(`${API_BASE}/groups/${group.id}/roles/${role.id}`, {
         method: `PATCH`,
         headers: { 'Content-Type': `application/json` },
         credentials: `include`,
@@ -159,7 +159,7 @@ export default function Equipe({ group }) {
     if (role.rank === 0) { setError(`O cargo Admin (rank 0) não pode ser excluído.`); return; }
     if (!confirm(`Excluir o cargo ${role.name}?`)) return;
     try {
-      const response = await fetch(`${API_BASE}/groups/${group.id}/roles/${role.id}`, {
+      const response = await cachedFetch(`${API_BASE}/groups/${group.id}/roles/${role.id}`, {
         method: `DELETE`,
         credentials: `include`,
       });
@@ -174,7 +174,7 @@ export default function Equipe({ group }) {
   async function handleChangeMemberRole(member, roleId) {
     if (!roleId) return;
     try {
-      const response = await fetch(`${API_BASE}/groups/${group.id}/members/role`, {
+      const response = await cachedFetch(`${API_BASE}/groups/${group.id}/members/role`, {
         method: `POST`,
         headers: { 'Content-Type': `application/json` },
         credentials: `include`,
@@ -193,7 +193,7 @@ export default function Equipe({ group }) {
     if (!inviteRoleId) { setError(`Escolha o cargo que a pessoa vai ter ao entrar.`); return; }
     setCreatingInvite(true);
     try {
-      const response = await fetch(`${API_BASE}/groups/${group.id}/invites`, {
+      const response = await cachedFetch(`${API_BASE}/groups/${group.id}/invites`, {
         method: `POST`,
         headers: { 'Content-Type': `application/json` },
         credentials: `include`,
@@ -226,7 +226,7 @@ export default function Equipe({ group }) {
   async function handleRevokeInvite(code) {
     if (!confirm(`Cancelar o convite ${formatInviteCode(code)}? Quem ainda não entrou não vai conseguir usar.`)) return;
     try {
-      const response = await fetch(`${API_BASE}/groups/${group.id}/invites/${code}`, {
+      const response = await cachedFetch(`${API_BASE}/groups/${group.id}/invites/${code}`, {
         method: `DELETE`,
         credentials: `include`,
       });
@@ -242,7 +242,7 @@ export default function Equipe({ group }) {
     if (member.isOwner) { setError(`O dono da empresa não pode ser removido.`); return; }
     if (!confirm(`Remover ${member.displayName ?? member.userId} da empresa?`)) return;
     try {
-      const response = await fetch(`${API_BASE}/groups/${group.id}/members`, {
+      const response = await cachedFetch(`${API_BASE}/groups/${group.id}/members`, {
         method: `DELETE`,
         headers: { 'Content-Type': `application/json` },
         credentials: `include`,
@@ -258,10 +258,10 @@ export default function Equipe({ group }) {
 
   return (
     <div className="page-stack">
-      <ErrorBanner message={error} onRetry={load} retrying={loading} onDismiss={() => setError(null)} />
+      <ErrorBanner message={error} onRetry={() => refresh(load)} retrying={loading} onDismiss={() => setError(null)} />
       <PageHeader page="Equipe" subtitle={group ? `Cargos e colaboradores · ${group.name}` : `Cargos e colaboradores`} />
       <div className="toolbar">
-        <button className="secondary-button" type="button" onClick={load} disabled={loading}>
+        <button className="secondary-button" type="button" onClick={() => refresh(load)} disabled={loading}>
           {loading ? `Carregando...` : `Atualizar`}
         </button>
         <button className="primary-button" type="button" onClick={() => setShowCreate((v) => !v)}>

@@ -6,7 +6,7 @@ import DataTable from '../components/DataTable';
 import Popup from '../components/Popup';
 import { ErrorBanner } from '../components/Feedback';
 import AddStockItem from './AddStockItem';
-import { API_BASE, friendlyError, networkError } from '../lib/api';
+import { API_BASE, cachedFetch, friendlyError, networkError, refresh } from '../lib/api';
 
 const page = 'Estoque';
 
@@ -30,7 +30,7 @@ export default function Estoque({ group }) {
     setLoading(true);
     setError(null);
     try {
-      const response = await fetch(`${API_BASE}/groups/getinvetory/${groupId}`, {
+      const response = await cachedFetch(`${API_BASE}/groups/getinvetory/${groupId}`, {
         credentials: `include`,
       });
       const data = await response.json().catch(() => ({}));
@@ -88,7 +88,7 @@ export default function Estoque({ group }) {
 
   return (
     <div className="page-stack">
-      <ErrorBanner message={error} onRetry={loadInventory} retrying={loading} onDismiss={() => setError(null)} />
+      <ErrorBanner message={error} onRetry={() => refresh(loadInventory)} retrying={loading} onDismiss={() => setError(null)} />
       <PageHeader page={page} subtitle={group ? `Produtos de ${group.name}` : `Escolha uma empresa`} />
       <div className="toolbar">
         <input placeholder="Pesquisar produto..." value={query} onChange={(e) => setQuery(e.target.value)} />
@@ -96,7 +96,7 @@ export default function Estoque({ group }) {
           <option value="all">Todos</option>
           <option value="low">Estoque baixo</option>
         </select>
-        <button className="secondary-button" type="button" onClick={loadInventory} disabled={loading}>
+        <button className="secondary-button" type="button" onClick={() => refresh(loadInventory)} disabled={loading}>
           {loading ? `Carregando...` : `Atualizar`}
         </button>
         <button className="primary-button" type="button" onClick={() => setAddingStockItem(true)}>

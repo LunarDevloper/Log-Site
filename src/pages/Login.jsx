@@ -1,6 +1,6 @@
 import { useState } from "react";
 import logo from "../assets/logo-new.png";
-import { API_BASE, friendlyError, networkError } from "../lib/api";
+import { API_BASE, cachedFetch, friendlyError, networkError } from "../lib/api";
 
 export default function Login({ onLogin, onSignup, invited }) {
   const [showPassword, setShowPassword] = useState(false);
@@ -33,7 +33,7 @@ export default function Login({ onLogin, onSignup, invited }) {
     setLoading(true);
     setError("");
     try {
-      const response = await fetch(`${API_BASE}/auth/login`, {
+      const response = await cachedFetch(`${API_BASE}/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',

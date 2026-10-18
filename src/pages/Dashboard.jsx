@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useState } from "react";
 import Card from "../components/Card";
 import { ErrorBanner, EmptyState } from "../components/Feedback";
-import dogRobot from "../assets/dog-robot.png";
-import { API_BASE, friendlyError, networkError } from "../lib/api";
+import WarehouseMap from "../components/WarehouseMap";
+import { API_BASE, cachedFetch, friendlyError, networkError, refresh } from "../lib/api";
 
 function relTime(value) {
   const t = new Date(value).getTime();
@@ -34,9 +34,9 @@ export default function Dashboard({ group }) {
     setPartial(null);
     try {
       const [invRes, lowRes, histRes] = await Promise.all([
-        fetch(`${API_BASE}/groups/getinvetory/${group.id}`, { credentials: `include` }),
-        fetch(`${API_BASE}/groups/getlowstock/${group.id}`, { credentials: `include` }),
-        fetch(`${API_BASE}/groups/gethistory/${group.id}`, { credentials: `include` }),
+        cachedFetch(`${API_BASE}/groups/getinvetory/${group.id}`, { credentials: `include` }),
+        cachedFetch(`${API_BASE}/groups/getlowstock/${group.id}`, { credentials: `include` }),
+        cachedFetch(`${API_BASE}/groups/gethistory/${group.id}`, { credentials: `include` }),
       ]);
       const invDenied = invRes.status === 403;
       const histDenied = histRes.status === 403;
@@ -80,13 +80,13 @@ export default function Dashboard({ group }) {
 
   return (
     <div className="page-stack">
-      <ErrorBanner message={error} onRetry={load} retrying={loading} onDismiss={() => setError(null)} />
+      <ErrorBanner message={error} onRetry={() => refresh(load)} retrying={loading} onDismiss={() => setError(null)} />
       <div className="page-heading">
         <div>
           <span>Início / Dashboard</span>
           <h1>{group?.name ?? `Dashboard`}</h1><p>Visão geral das operações logísticas</p>
         </div>
-        <button className="primary-button" type="button" onClick={load} disabled={loading}>
+        <button className="primary-button" type="button" onClick={() => refresh(load)} disabled={loading}>
           {loading ? `Atualizando...` : `Atualizar`}
         </button>
       </div>
@@ -118,22 +118,8 @@ export default function Dashboard({ group }) {
               </tbody></table></div>}
         </Card>
 
-        <Card title="Mapa do armazém" subtitle="Rastreamento visual da rota do robô">
-          <div className="warehouse-map warehouse-map--tracking">
-            <div className="map-grid" />
-            <svg className="robot-route" viewBox="0 0 100 62" preserveAspectRatio="none" aria-hidden="true">
-              <polyline points="13,12 13,50 61,50 61,31 85,31" />
-            </svg>
-            <span className="map-dot destination-dot destination-dot-one" title="Destino" />
-            <span className="map-dot destination-dot destination-dot-two" title="Destino" />
-            <span className="map-dot product-dot" title="Produto" />
-            <img className="dog-robot dog-robot-start" src={dogRobot} alt="Robô cachorro no ponto inicial da rota" title="Robô" />
-            <div className="map-legend">
-              <span><i className="legend-dot legend-robot" />Robô</span>
-              <span><i className="legend-dot legend-product" />Produto</span>
-              <span><i className="legend-dot legend-destination" />Destino</span>
-            </div>
-          </div>
+        <Card title="Mapa do armazém" subtitle="Ruas, módulos e curva ABC · ilustrativo">
+          <WarehouseMap />
         </Card>
       </div>
     </div>

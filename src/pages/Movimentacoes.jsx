@@ -3,7 +3,7 @@ import Card from '../components/Card';
 import PageHeader from '../components/PageHeader';
 import DataTable from '../components/DataTable';
 import { ErrorBanner } from '../components/Feedback';
-import { API_BASE, friendlyError, networkError } from '../lib/api';
+import { API_BASE, cachedFetch, friendlyError, networkError, refresh } from '../lib/api';
 
 const page = 'Movimentações';
 
@@ -31,7 +31,7 @@ export default function Movimentacoes({ group }) {
     setLoading(true);
     setError(null);
     try {
-      const response = await fetch(`${API_BASE}/groups/gethistory/${group.id}`, {
+      const response = await cachedFetch(`${API_BASE}/groups/gethistory/${group.id}`, {
         credentials: `include`,
       });
       const data = await response.json().catch(() => ({}));
@@ -74,7 +74,7 @@ export default function Movimentacoes({ group }) {
 
   return (
     <div className="page-stack">
-      <ErrorBanner message={error} onRetry={load} retrying={loading} onDismiss={() => setError(null)} />
+      <ErrorBanner message={error} onRetry={() => refresh(load)} retrying={loading} onDismiss={() => setError(null)} />
       <PageHeader
         page={page}
         subtitle={group ? `${entries} entradas · ${exits} saídas · ${group.name}` : `Entradas e saídas`}
@@ -87,7 +87,7 @@ export default function Movimentacoes({ group }) {
             <option value="add">Entradas</option>
             <option value="remove">Saídas</option>
           </select>
-          <button className="secondary-button" type="button" onClick={load} disabled={loading}>
+          <button className="secondary-button" type="button" onClick={() => refresh(load)} disabled={loading}>
             {loading ? `Carregando...` : `Atualizar`}
           </button>
         </div>

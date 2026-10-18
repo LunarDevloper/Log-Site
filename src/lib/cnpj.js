@@ -77,9 +77,19 @@ function fromCnpjWs(d) {
   };
 }
 
+// Mesmo CNPJ não consulta de novo (as APIs públicas também têm limite)
+const lookupCache = new Map();
+
 // Consulta pública: BrasilAPI e, se falhar, CNPJ.ws. Retorna null se não achar.
 export async function lookupCnpj(value, signal) {
   const c = cleanCnpj(value);
+  if (lookupCache.has(c)) return lookupCache.get(c);
+  const info = await lookupCnpjUncached(c, signal);
+  lookupCache.set(c, info);
+  return info;
+}
+
+async function lookupCnpjUncached(c, signal) {
   const sources = [
     { url: `https://brasilapi.com.br/api/cnpj/v1/${c}`, map: fromBrasilApi },
     { url: `https://publica.cnpj.ws/cnpj/${c}`, map: fromCnpjWs },

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import Card from "../components/Card";
-import { friendlyError, networkError, API_BASE } from "../lib/api";
+import { API_BASE, cachedFetch, friendlyError, networkError } from "../lib/api";
 
 export default function AddStockItem({ group, onCancel, onSave }) {
   const [isSaving, setIsSaving] = useState(false);
@@ -42,7 +42,7 @@ export default function AddStockItem({ group, onCancel, onSave }) {
     setIsSaving(true);
     setError("");
     try {
-      const createRes = await fetch(`${API_BASE}/groups/${group.id}/items`, {
+      const createRes = await cachedFetch(`${API_BASE}/groups/${group.id}/items`, {
         method: "POST",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
@@ -57,7 +57,7 @@ export default function AddStockItem({ group, onCancel, onSave }) {
         return;
       }
       if (quantity > 0) {
-        const addRes = await fetch(`${API_BASE}/groups/${group.id}/inventory/add`, {
+        const addRes = await cachedFetch(`${API_BASE}/groups/${group.id}/inventory/add`, {
           method: "POST",
           credentials: "include",
           headers: { "Content-Type": "application/json" },
@@ -70,7 +70,7 @@ export default function AddStockItem({ group, onCancel, onSave }) {
         }
       }
       if (safetyStock > 0) {
-        await fetch(`${API_BASE}/groups/${group.id}/items`, {
+        await cachedFetch(`${API_BASE}/groups/${group.id}/items`, {
           method: "PATCH",
           credentials: "include",
           headers: { "Content-Type": "application/json" },

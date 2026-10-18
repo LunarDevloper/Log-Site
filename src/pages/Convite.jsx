@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import Card from '../components/Card';
 import PageHeader from '../components/PageHeader';
-import { API_BASE, friendlyError, networkError } from '../lib/api';
+import { API_BASE, cachedFetch, friendlyError, networkError, refresh } from '../lib/api';
 import { formatInviteCode } from '../lib/invite';
 
 function formatDate(value) {
@@ -20,7 +20,7 @@ export default function Convite({ code, onAccepted, onCancel }) {
     setStatus(`loading`);
     setError(null);
     try {
-      const response = await fetch(`${API_BASE}/invites/${code}`, { credentials: `include` });
+      const response = await cachedFetch(`${API_BASE}/invites/${code}`, { credentials: `include` });
       const data = await response.json().catch(() => ({}));
       if (response.status === 404) {
         setStatus(`notfound`);
@@ -45,7 +45,7 @@ export default function Convite({ code, onAccepted, onCancel }) {
 
   async function openGroup(groupId) {
     try {
-      const response = await fetch(`${API_BASE}/groups/${groupId}`, { credentials: `include` });
+      const response = await cachedFetch(`${API_BASE}/groups/${groupId}`, { credentials: `include` });
       const data = await response.json().catch(() => ({}));
       onAccepted(response.ok && data?.id ? data : { id: groupId, name: invite?.groupName });
     } catch {
@@ -57,7 +57,7 @@ export default function Convite({ code, onAccepted, onCancel }) {
     setJoining(true);
     setError(null);
     try {
-      const response = await fetch(`${API_BASE}/invites/${code}/accept`, {
+      const response = await cachedFetch(`${API_BASE}/invites/${code}/accept`, {
         method: `POST`,
         credentials: `include`,
       });
@@ -108,7 +108,7 @@ export default function Convite({ code, onAccepted, onCancel }) {
             <p className="form-error">{error}</p>
             <div className="invite-actions">
               <button className="secondary-button" type="button" onClick={onCancel}>Voltar</button>
-              <button className="primary-button" type="button" onClick={load}>Tentar de novo</button>
+              <button className="primary-button" type="button" onClick={() => refresh(load)}>Tentar de novo</button>
             </div>
           </div>
         )}

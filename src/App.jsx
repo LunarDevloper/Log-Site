@@ -11,7 +11,7 @@ import Login from "./pages/Login";
 import Signup from "./pages/Signup";
 import Placeholder from "./pages/Placeholder";
 import Convite from "./pages/Convite";
-import { API_BASE } from "./lib/api";
+import { API_BASE, cachedFetch } from "./lib/api";
 import { clearPendingInvite, loadPendingInvite, storePendingInvite, takeInviteFromUrl } from "./lib/invite";
 const STORAGE_KEY = "buddylog.group";
 
@@ -36,7 +36,7 @@ export default function App() {
     let cancelled = false;
     (async () => {
       try {
-        const response = await fetch(`${API_BASE}/auth/me`, { credentials: "include" });
+        const response = await cachedFetch(`${API_BASE}/auth/me`, { credentials: "include" });
         if (!cancelled && response.ok) setLoggedIn(true);
       } catch {
         /* sem sessão persistida, mantém tela de login */
@@ -73,7 +73,7 @@ export default function App() {
 
   async function handleLogout() {
     try {
-      await fetch(`${API_BASE}/auth/logout`, { method: "POST", credentials: "include" });
+      await cachedFetch(`${API_BASE}/auth/logout`, { method: "POST", credentials: "include" });
     } catch {
       /* sai mesmo sem resposta da API */
     }

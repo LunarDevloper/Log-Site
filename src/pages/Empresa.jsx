@@ -3,7 +3,7 @@ import Card from '../components/Card';
 import PageHeader from '../components/PageHeader';
 import Popup from '../components/Popup';
 import { EmptyState, ErrorBanner } from '../components/Feedback';
-import { API_BASE, friendlyError, networkError } from '../lib/api';
+import { API_BASE, cachedFetch, friendlyError, networkError, refresh } from '../lib/api';
 import { cleanCnpj, formatCep, formatPhone, isValidCnpj, lookupCnpj, maskCnpj } from '../lib/cnpj';
 import { formatInviteCode, isValidInviteCode, normalizeInviteCode } from '../lib/invite';
 
@@ -40,7 +40,7 @@ export default function Empresa({ onSelect, onInviteCode, selectedId }) {
     setLoading(true);
     setError(null);
     try {
-      const response = await fetch(`${API_BASE}/groups/listgroups`, {
+      const response = await cachedFetch(`${API_BASE}/groups/listgroups`, {
         method: `GET`,
         credentials: `include`,
       });
@@ -136,7 +136,7 @@ export default function Empresa({ onSelect, onInviteCode, selectedId }) {
     setSaving(true);
     setError(null);
     try {
-      const response = await fetch(`${API_BASE}/groups/create`, {
+      const response = await cachedFetch(`${API_BASE}/groups/create`, {
         method: `POST`,
         headers: { 'Content-Type': `application/json` },
         credentials: `include`,
@@ -188,7 +188,7 @@ export default function Empresa({ onSelect, onInviteCode, selectedId }) {
       return;
     }
     try {
-      const response = await fetch(`${API_BASE}/groups/${group.id}`, {
+      const response = await cachedFetch(`${API_BASE}/groups/${group.id}`, {
         method: `GET`,
         credentials: `include`,
       });
@@ -201,7 +201,7 @@ export default function Empresa({ onSelect, onInviteCode, selectedId }) {
 
   return (
     <div className="page-stack">
-      <ErrorBanner message={error} onRetry={loadGroups} retrying={loading} onDismiss={() => setError(null)} />
+      <ErrorBanner message={error} onRetry={() => refresh(loadGroups)} retrying={loading} onDismiss={() => setError(null)} />
       <PageHeader page="Empresa" subtitle="Escolha uma empresa para entrar no painel" />
       <div className="toolbar">
         <input
@@ -209,7 +209,7 @@ export default function Empresa({ onSelect, onInviteCode, selectedId }) {
           value={query}
           onChange={(e) => setQuery(e.target.value)}
         />
-        <button className="secondary-button" type="button" onClick={loadGroups} disabled={loading}>
+        <button className="secondary-button" type="button" onClick={() => refresh(loadGroups)} disabled={loading}>
           {loading ? `Carregando...` : `Atualizar`}
         </button>
         {onInviteCode && (
