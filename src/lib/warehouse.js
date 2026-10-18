@@ -1,22 +1,24 @@
-// Mapa ilustrativo do armazém (só front, para a demo).
-// Tudo sai da configuração: muda o número de ruas/módulos e o desenho acompanha.
-// Ruas sempre na horizontal; a doca fica à esquerda e a curva A fica mais perto dela.
+// Mapa ilustrativo do armazém (só front, para a demo), no esquema do rascunho:
+// doca em cima, e descendo: Rua 1, Módulo 1, Rua 2, Módulo 2...
+// Cada módulo é uma prateleira horizontal; a rua acima dele é o corredor de acesso.
+// A curva é por módulo: quanto mais perto da doca, mais giro.
 export const WAREHOUSE_CONFIG = {
-  ruas: 4,
-  modulos: 12,
-  curvas: { A: 3, B: 4 }, // primeiros 3 módulos = A, próximos 4 = B, resto = C
-  pedido: { rua: 3, modulo: 8 }, // separação inicial da demo
+  modulos: 4,
+  posicoes: 10, // posições de cada prateleira (só para o robô ter onde parar)
+  curvas: [`A`, `B`, `C`, `C`], // curva de cada módulo, de cima para baixo
+  pedido: { modulo: 2, posicao: 7 }, // separação inicial da demo
+  otif: 96, // OTIF da demo (% de pedidos no prazo e completos)
 };
 
 const SIZE = {
-  doca: 64,
-  corredor: 30, // corredor vertical entre a doca e as ruas
-  modulo: 46,
-  gap: 4,
-  rack: 30, // altura da prateleira
-  rua: 24, // altura do corredor de cada rua
-  topo: 26, // faixa das curvas A/B/C
-  pad: 12,
+  rotulo: 118, // coluna da esquerda com a curva de cada módulo
+  corredor: 26, // corredor vertical que liga a doca às ruas
+  largura: 560, // comprimento das prateleiras
+  doca: 34,
+  rua: 30,
+  modulo: 26,
+  fim: 54, // espaço do nome da rua no fim do corredor
+  pad: 10,
 };
 
 export const CURVA_INFO = {
@@ -29,82 +31,75 @@ export function pad2(n) {
   return String(n).padStart(2, `0`);
 }
 
-export function curvaDoModulo(modulo, config = WAREHOUSE_CONFIG) {
-  if (modulo <= config.curvas.A) return `A`;
-  if (modulo <= config.curvas.A + config.curvas.B) return `B`;
-  return `C`;
-}
-
-export function enderecoDoModulo(rua, modulo) {
-  return `R${pad2(rua)}-M${pad2(modulo)}`;
+export function enderecoDaPosicao(modulo, posicao) {
+  return `M${pad2(modulo)}-P${pad2(posicao)}`;
 }
 
 export function buildWarehouse(config = WAREHOUSE_CONFIG) {
   const s = SIZE;
-  const x0 = s.doca + s.corredor;
-  const banda = s.rack + s.rua;
-  const width = x0 + config.modulos * (s.modulo + s.gap) + s.pad;
-  const height = s.topo + config.ruas * banda + s.pad;
-  const corredorX = s.doca + s.corredor / 2;
-  const docaY = s.topo + (config.ruas * banda) / 2;
+  const x0 = s.rotulo + s.corredor;
+  const passo = s.largura / config.posicoes;
+  const banda = s.rua + s.modulo;
+  const width = x0 + s.largura + s.fim;
+  const height = s.doca + config.modulos * banda + s.pad;
 
-  const modulos = [];
+  const doca = { x: x0, y: 0, width: s.largura * 0.42, height: s.doca - 8 };
+  doca.centroX = doca.x + doca.width / 2;
+  doca.centroY = doca.y + doca.height / 2;
+
   const ruas = [];
-  for (let r = 1; r <= config.ruas; r++) {
-    const y = s.topo + (r - 1) * banda;
-    ruas.push({ rua: r, y: y + s.rack, centroY: y + s.rack + s.rua / 2, x: x0 - 2, width: width - x0 - s.pad + 4, height: s.rua });
-    for (let m = 1; m <= config.modulos; m++) {
-      modulos.push({
-        rua: r,
-        modulo: m,
-        curva: curvaDoModulo(m, config),
-        endereco: enderecoDoModulo(r, m),
-        x: x0 + (m - 1) * (s.modulo + s.gap),
-        y,
-        width: s.modulo,
-        height: s.rack,
+  const modulos = [];
+  const posicoes = [];
+  for (let n = 1; n <= config.modulos; n++) {
+    const yRua = s.doca + (n - 1) * banda;
+    const yModulo = yRua + s.rua;
+    const curva = config.curvas[n - 1] ?? `C`;
+
+    ruas.push({ rua: n, x: x0, y: yRua, width: s.largura + s.fim, height: s.rua, centroY: yRua + s.rua / 2 });
+    modulos.push({ modulo: n, curva, x: x0, y: yModulo, width: s.largura, height: s.modulo, rotuloX: s.rotulo - 8 });
+
+    for (let p = 1; p <= config.posicoes; p++) {
+      posicoes.push({
+        modulo: n,
+        posicao: p,
+        curva,
+        endereco: enderecoDaPosicao(n, p),
+        x: x0 + (p - 1) * passo,
+        y: yModulo,
+        width: passo,
+        height: s.modulo,
       });
     }
-  }
-
-  // Faixas das curvas no topo, cobrindo as colunas de cada uma
-  const curvas = [];
-  let inicio = 1;
-  for (const curva of [`A`, `B`, `C`]) {
-    const qtd = curva === `C` ? config.modulos - config.curvas.A - config.curvas.B : config.curvas[curva];
-    if (qtd <= 0) continue;
-    const x = x0 + (inicio - 1) * (s.modulo + s.gap);
-    curvas.push({ curva, x, width: qtd * (s.modulo + s.gap) - s.gap });
-    inicio += qtd;
   }
 
   return {
     width,
     height,
-    doca: { x: 0, y: s.topo, width: s.doca - 6, height: config.ruas * banda, centroX: (s.doca - 6) / 2, centroY: docaY },
-    corredorX,
+    doca,
+    corredorX: s.rotulo + s.corredor / 2,
+    fimX: x0 + s.largura + s.fim - 6,
     ruas,
     modulos,
-    curvas,
-    topo: s.topo,
+    posicoes,
   };
 }
 
-// Rota do robô: sai da doca, pega o corredor principal, entra na rua e para embaixo do módulo
-export function rotaAteModulo(layout, alvo) {
-  const rua = layout.ruas.find((r) => r.rua === alvo.rua);
-  const modulo = layout.modulos.find((m) => m.rua === alvo.rua && m.modulo === alvo.modulo);
-  if (!rua || !modulo) return null;
+// Rota do robô: sai da doca, desce pelo corredor da esquerda, entra na rua do módulo
+// e para em frente à posição
+export function rotaAtePosicao(layout, alvo) {
+  const rua = layout.ruas.find((r) => r.rua === alvo.modulo);
+  const posicao = layout.posicoes.find((p) => p.modulo === alvo.modulo && p.posicao === alvo.posicao);
+  if (!rua || !posicao) return null;
 
   const pontos = [
-    [layout.doca.centroX, layout.doca.centroY],
+    [layout.doca.x + 12, layout.doca.centroY],
     [layout.corredorX, layout.doca.centroY],
     [layout.corredorX, rua.centroY],
-    [modulo.x + modulo.width / 2, rua.centroY],
+    [posicao.x + posicao.width / 2, rua.centroY],
   ];
   let distancia = 0;
   for (let i = 1; i < pontos.length; i++) {
     distancia += Math.abs(pontos[i][0] - pontos[i - 1][0]) + Math.abs(pontos[i][1] - pontos[i - 1][1]);
   }
-  return { pontos, distancia, destino: modulo };
+  return { pontos, distancia, destino: posicao };
 }

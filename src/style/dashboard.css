@@ -274,7 +274,7 @@
 }
 
 
-/* Mapa modular do armazém (WarehouseMap) */
+/* Mapa do armazém (WarehouseMap): doca em cima, ruas e módulos descendo */
 .wh {
     display: flex;
     flex-direction: column;
@@ -293,81 +293,70 @@
     width: 100%;
     min-width: 560px;
     height: auto;
-    padding: 8px;
+    padding: 10px 8px 6px;
     font-family: 'IBM Plex Sans', system-ui, sans-serif;
 }
 
-.wh-curva line {
-    stroke-width: 2;
-}
-
-.wh-curva text {
-    font-size: 9px;
-    font-weight: 600;
-    letter-spacing: .06em;
-    text-transform: uppercase;
-}
-
-.wh-curva--A line { stroke: var(--neon); }
-.wh-curva--A text { fill: var(--neon); }
-.wh-curva--B line { stroke: var(--amber); }
-.wh-curva--B text { fill: var(--amber); }
-.wh-curva--C line { stroke: #7b8499; }
-.wh-curva--C text { fill: #7b8499; }
-
 .wh-doca rect {
     fill: rgba(34, 197, 94, .08);
-    stroke: rgba(34, 197, 94, .5);
+    stroke: rgba(34, 197, 94, .55);
     stroke-dasharray: 4 3;
 }
 
 .wh-doca text {
     fill: var(--green);
-    font-size: 8px;
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: .14em;
+}
+
+.wh-rua rect {
+    fill: rgba(255, 255, 255, .025);
+}
+
+.wh-rua text {
+    fill: var(--muted);
+    font-size: 9px;
     font-weight: 600;
     letter-spacing: .08em;
 }
 
-.wh-rua rect {
-    fill: rgba(255, 255, 255, .02);
+.wh-curva__nome {
+    font-size: 9px;
+    font-weight: 500;
 }
 
-.wh-rua text {
-    fill: var(--dim);
-    font-size: 8px;
-    font-weight: 600;
-    letter-spacing: .1em;
-}
+.wh-curva--A .wh-curva__nome { fill: var(--neon); }
+.wh-curva--B .wh-curva__nome { fill: var(--amber); }
+.wh-curva--C .wh-curva__nome { fill: #8f97ab; }
 
-.wh-modulo {
+.wh-pos {
     cursor: pointer;
 }
 
-.wh-modulo rect {
+.wh-pos rect {
     stroke-width: 1;
-    transition: fill .15s, stroke .15s;
+    transition: fill .15s;
 }
 
-.wh-modulo text {
-    font-family: 'IBM Plex Mono', ui-monospace, monospace;
-    font-size: 8px;
-    pointer-events: none;
-}
+.wh-pos--A rect { fill: rgba(180, 162, 255, .18); stroke: rgba(180, 162, 255, .45); }
+.wh-pos--B rect { fill: rgba(224, 164, 58, .15); stroke: rgba(224, 164, 58, .42); }
+.wh-pos--C rect { fill: rgba(123, 132, 153, .14); stroke: rgba(123, 132, 153, .38); }
 
-.wh-modulo--A rect { fill: rgba(180, 162, 255, .16); stroke: rgba(180, 162, 255, .5); }
-.wh-modulo--A text { fill: #d6ccff; }
-.wh-modulo--B rect { fill: rgba(224, 164, 58, .13); stroke: rgba(224, 164, 58, .45); }
-.wh-modulo--B text { fill: #f0cf95; }
-.wh-modulo--C rect { fill: rgba(123, 132, 153, .12); stroke: rgba(123, 132, 153, .4); }
-.wh-modulo--C text { fill: #a7aec0; }
+.wh-pos--A:hover rect { fill: rgba(180, 162, 255, .34); }
+.wh-pos--B:hover rect { fill: rgba(224, 164, 58, .3); }
+.wh-pos--C:hover rect { fill: rgba(123, 132, 153, .3); }
 
-.wh-modulo:hover rect {
-    stroke: var(--text);
-}
-
-.wh-modulo--alvo rect {
+.wh-pos--alvo rect {
     stroke: #f59e0b;
     stroke-width: 2;
+}
+
+.wh-modulo__nome {
+    fill: var(--text);
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: .08em;
 }
 
 .wh-rota {
@@ -402,9 +391,25 @@
     color: var(--text);
 }
 
-.wh-info small {
-    color: var(--dim);
+.wh-otif {
+    padding: 3px 8px;
+    border: 1px solid rgba(34, 197, 94, .4);
+    border-radius: 6px;
+    color: var(--green);
     font-size: 11px;
+    font-weight: 600;
+    letter-spacing: .04em;
+}
+
+.wh-otif strong {
+    color: var(--green);
+    font-size: 13px;
+}
+
+.wh-otif small {
+    color: var(--dim);
+    font-weight: 400;
+    letter-spacing: 0;
 }
 
 .wh-tag {
@@ -433,6 +438,11 @@
     gap: 6px;
 }
 
+.wh-legenda .wh-dica {
+    margin-left: auto;
+    color: var(--dim);
+}
+
 .wh-swatch {
     width: 12px;
     height: 12px;
@@ -440,8 +450,8 @@
     border-radius: 3px;
 }
 
-.wh-swatch--A { background: rgba(180, 162, 255, .16); border-color: rgba(180, 162, 255, .6); }
-.wh-swatch--B { background: rgba(224, 164, 58, .13); border-color: rgba(224, 164, 58, .55); }
-.wh-swatch--C { background: rgba(123, 132, 153, .12); border-color: rgba(123, 132, 153, .5); }
+.wh-swatch--A { background: rgba(180, 162, 255, .18); border-color: rgba(180, 162, 255, .6); }
+.wh-swatch--B { background: rgba(224, 164, 58, .15); border-color: rgba(224, 164, 58, .55); }
+.wh-swatch--C { background: rgba(123, 132, 153, .14); border-color: rgba(123, 132, 153, .5); }
 .wh-swatch--produto { background: #f59e0b; border-color: #f59e0b; border-radius: 50%; }
 .wh-swatch--doca { background: rgba(34, 197, 94, .08); border-color: rgba(34, 197, 94, .6); border-style: dashed; }
