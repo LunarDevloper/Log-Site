@@ -328,3 +328,18 @@
     margin: 0 0 16px;
 }
 
+
+.login-forgot {
+    align-self: flex-end;
+    margin: -4px 0 4px;
+    padding: 0;
+    border: 0;
+    background: none;
+    color: var(--neon);
+    font-size: 12px;
+    cursor: pointer;
+}
+
+.login-forgot:hover {
+    text-decoration: underline;
+}

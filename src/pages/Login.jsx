@@ -2,7 +2,7 @@ import { useState } from "react";
 import logo from "../assets/logo-new.png";
 import { API_BASE, cachedFetch, friendlyError, networkError } from "../lib/api";
 
-export default function Login({ onLogin, onSignup, invited }) {
+export default function Login({ onLogin, onSignup, onForgot, invited }) {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -77,6 +77,10 @@ export default function Login({ onLogin, onSignup, invited }) {
             <button type="button" onClick={() => setShowPassword((v) => !v)}>{showPassword ? "Ocultar" : "Mostrar"}</button>
           </div>
         </label>
+
+        {onForgot && (
+          <button className="login-forgot" type="button" onClick={onForgot}>Esqueci minha senha</button>
+        )}
 
         {error && <p className="login-error" role="alert">{error}</p>}
         <button className="login-submit" type="submit" disabled={loading}>

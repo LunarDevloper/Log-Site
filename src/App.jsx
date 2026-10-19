@@ -11,9 +11,25 @@ import Login from "./pages/Login";
 import Signup from "./pages/Signup";
 import Placeholder from "./pages/Placeholder";
 import Convite from "./pages/Convite";
+import ForgotPassword from "./pages/ForgotPassword";
+import ResetPassword from "./pages/ResetPassword";
 import { API_BASE, cachedFetch } from "./lib/api";
 import { clearPendingInvite, loadPendingInvite, storePendingInvite, takeInviteFromUrl } from "./lib/invite";
 const STORAGE_KEY = "buddylog.group";
+
+// O link do e-mail de redefinição volta com ?redefinir=1 (sessão de recuperação já aberta)
+function takeResetFromUrl() {
+  try {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("redefinir") !== "1") return false;
+    params.delete("redefinir");
+    const rest = params.toString();
+    window.history.replaceState(null, "", `${window.location.pathname}${rest ? `?${rest}` : ""}${window.location.hash}`);
+    return true;
+  } catch {
+    return false;
+  }
+}
 
 function loadStoredGroup() {
   try {
@@ -27,6 +43,7 @@ function loadStoredGroup() {
 export default function App() {
   const [loggedIn, setLoggedIn] = useState(false);
   const [authPage, setAuthPage] = useState("login");
+  const [resetMode, setResetMode] = useState(takeResetFromUrl);
   const [page, setPage] = useState("Empresa");
   const [menuOpen, setMenuOpen] = useState(false);
   const [selectedGroup, setSelectedGroup] = useState(loadStoredGroup);
@@ -87,9 +104,19 @@ export default function App() {
     setPage("Empresa");
   }
 
+  if (resetMode) {
+    return (
+      <ResetPassword
+        onDone={() => { setResetMode(false); setLoggedIn(true); }}
+        onRequestNew={() => { setResetMode(false); setLoggedIn(false); setAuthPage("forgot"); }}
+      />
+    );
+  }
+
   if (!loggedIn) {
+    if (authPage === "forgot") return <ForgotPassword onBackToLogin={() => setAuthPage("login")} />;
     return authPage === "login" ? (
-      <Login invited={!!invite} onLogin={() => setLoggedIn(true)} onSignup={() => setAuthPage("signup")} />
+      <Login invited={!!invite} onLogin={() => setLoggedIn(true)} onSignup={() => setAuthPage("signup")} onForgot={() => setAuthPage("forgot")} />
     ) : (
       <Signup invited={!!invite} onBackToLogin={() => setAuthPage("login")} />
     );
