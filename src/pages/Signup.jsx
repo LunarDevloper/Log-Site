@@ -84,13 +84,16 @@ export default function Signup({ onBackToLogin, invited }) {
           showError("Este e-mail já está cadastrado.");
           return;
         }
-        if (response.status === 400) {
-          console.log("Erro real do backend:", data); 
-          showError(data?.error ?? "Confira os dados informados.");
+        if (response.status === 429 && data?.code === "email_rate_limit") {
+          showError("O envio de e-mails de confirmação atingiu o limite agora. Espere alguns minutos antes de tentar de novo. Se você já se cadastrou, procure o e-mail na caixa de entrada e no spam.");
           return;
         }
         if (response.status === 429) {
           showError("Muitas tentativas. Tente novamente em alguns minutos.");
+          return;
+        }
+        if (response.status === 400) {
+          showError(data?.error ?? "Confira os dados informados.");
           return;
         }
         showError(data?.error ?? "Não foi possível criar sua conta.");

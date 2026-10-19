@@ -42,6 +42,7 @@ export default function Login({ onLogin, onSignup, invited }) {
       const data = await response.json().catch(() => ({}));
       if (!response.ok) {
         if (response.status === 401) setError("E-mail ou senha incorretos. Tente de novo.");
+        else if (response.status === 403 && data?.code === `email_not_confirmed`) setError("Seu e-mail ainda não foi confirmado. Abra o link que enviamos para você (veja também o spam) e depois entre.");
         else setError(friendlyError(response.status, data?.error, `Não foi possível entrar agora.`));
         return;
       }
