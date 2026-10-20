@@ -1,5 +1,6 @@
 import Icon from "./Icon";
 import logo from "../assets/logo-new.png";
+import { userInitials, userName } from "../lib/user";
 
 
 const items = [
@@ -8,7 +9,7 @@ const items = [
   ["Relatórios", "reports"], ["Configurações", "settings"],
 ];
 
-export default function Sidebar({ page, onNavigate, open, onClose }) {
+export default function Sidebar({ page, onNavigate, open, onClose, user, onProfile, onLogout }) {
   return (
     <>
       <button className={`backdrop ${open ? "show" : ""}`} onClick={onClose} aria-label="Fechar menu" />
@@ -21,9 +22,22 @@ export default function Sidebar({ page, onNavigate, open, onClose }) {
             </button>
           ))}
         </nav>
-        <div className="sidebar-user">
-          <div className="avatar">OP</div>
-          <div className="sidebar-user__info"><strong>OP</strong><small>Sistema online</small></div>
+        <div className="sidebar-account">
+          <button
+            type="button"
+            className={`sidebar-user ${page === "Perfil" ? "active" : ""}`}
+            onClick={onProfile}
+            title="Meu perfil"
+          >
+            <div className="avatar">{userInitials(user)}</div>
+            <div className="sidebar-user__info">
+              <strong>{userName(user)}</strong>
+              <small>{user?.email ?? `Meu perfil`}</small>
+            </div>
+          </button>
+          <button type="button" className="sidebar-logout" onClick={() => { onClose(); onLogout(); }}>
+            <Icon name="logout" size={16} /><span>Sair da conta</span>
+          </button>
         </div>
       </aside>
     </>

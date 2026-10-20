@@ -11,6 +11,7 @@ import "./style/responsividade.css";
 import "./style/tabela.css";
 import "./style/popup.css";
 import "./style/feedback.css";
+import "./style/perfil.css";
 
 ReactDOM.createRoot(document.getElementById("root")).render(
   <React.StrictMode>

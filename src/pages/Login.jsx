@@ -2,7 +2,7 @@ import { useState } from "react";
 import logo from "../assets/logo-new.png";
 import { API_BASE, cachedFetch, friendlyError, networkError } from "../lib/api";
 
-export default function Login({ onLogin, onSignup, onForgot, invited }) {
+export default function Login({ onLogin, onSignup, onForgot, invited, notice }) {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -46,7 +46,14 @@ export default function Login({ onLogin, onSignup, onForgot, invited }) {
         else setError(friendlyError(response.status, data?.error, `Não foi possível entrar agora.`));
         return;
       }
-      onLogin();
+      // Confere se o navegador guardou o cookie da sessão antes de entrar no painel
+      const check = await cachedFetch(`${API_BASE}/auth/me`, { credentials: 'include' });
+      const me = await check.json().catch(() => ({}));
+      if (!check.ok) {
+        setError("Seu navegador bloqueou o cookie de login. Desative o bloqueio de cookies para este site (no iPhone: Ajustes > Safari) ou use outro navegador.");
+        return;
+      }
+      onLogin(me?.user ?? data?.user);
     } catch {
       setError(networkError(`entrar`));
     } finally {
@@ -82,6 +89,7 @@ export default function Login({ onLogin, onSignup, onForgot, invited }) {
           <button className="login-forgot" type="button" onClick={onForgot}>Esqueci minha senha</button>
         )}
 
+        {!error && notice && <p className="login-notice" role="status">{notice}</p>}
         {error && <p className="login-error" role="alert">{error}</p>}
         <button className="login-submit" type="submit" disabled={loading}>
           {loading ? `Entrando...` : `Entrar no sistema`}

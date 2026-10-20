@@ -1,8 +1,7 @@
 import { useState } from "react";
 import logo from "../assets/logo-new.png";
 import Popup from "../components/Popup";
-
-const API_BASE = (import.meta.env.VITE_API_URL ?? "https://buddylog-rosy.vercel.app").replace(/\/$/, "");
+import { API_BASE, friendlyError } from "../lib/api";
 
 export default function Signup({ onBackToLogin, invited }) {
   const [showPassword, setShowPassword] = useState(false);
@@ -93,19 +92,19 @@ export default function Signup({ onBackToLogin, invited }) {
           return;
         }
         if (response.status === 400) {
-          showError(data?.error ?? "Confira os dados informados.");
+          showError(friendlyError(400, data?.error, "Confira os dados informados. A senha precisa ter entre 6 e 72 caracteres."));
           return;
         }
-        showError(data?.error ?? "Não foi possível criar sua conta.");
+        showError(friendlyError(response.status, data?.error, "Não foi possível criar sua conta."));
         return;
       }
 
       if (data?.sessionCreated === false) {
         setSuccess(
-          data?.message ?? "Conta criada! Verifique seu e-mail para confirmar o cadastro e depois entre no sistema.",
+          "Conta criada! Abra o link que enviamos para o seu e-mail (veja também o spam) neste mesmo navegador e depois entre no sistema.",
         );
       } else {
-        setSuccess(data?.message ?? "Conta criada com sucesso!");
+        setSuccess("Conta criada com sucesso!");
       }
       setTimeout(() => onBackToLogin(), 1800);
     } catch (error) {

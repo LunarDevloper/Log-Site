@@ -4,7 +4,7 @@ API HTTP (Express) para grupos, estoque e cargos. Auth no **Supabase**; dados de
 
 Subida: `npm run dev` (watch) ou `npm start`. Env: `Source/.env`. Default `http://localhost:3000`.
 
-O frontend deve chamar a API com `credentials: 'include'` (cookies httpOnly). JSON até **64kb**. Helmet + CORS (`CLIENT_URL`, credentials). `trust proxy` ligado.
+O site chama a API pelo proxy `/api` do próprio domínio (`vercel.json` do site → esta API), com `credentials: 'include'` (cookies httpOnly). Com a API em outro domínio o cookie vira de terceiros e o Safari/iOS bloqueia: todas as rotas passam a dar 401. JSON até **64kb**. Helmet + CORS (`CLIENT_URL`, credentials). `trust proxy` ligado.
 
 Não há rotas HTTP para `robots` / `robot_logs` (existem no banco).
 
@@ -20,11 +20,13 @@ Não há rotas HTTP para `robots` / `robot_logs` (existem no banco).
 | `SUPABASE_PUBLISHABLE_KEY` | Chave publishable/anon |
 | `DATABASE_URL` | Postgres Neon (domínio) |
 | `REDIS_URL` | Cache opcional |
-| `CLIENT_URL` | Origem CORS e redirect pós-login (site) |
-| `AUTH_CALLBACK_URL` | Redirect da confirmação de e-mail → API (`…/auth/callback`) |
+| `CLIENT_URL` | Origem extra liberada no CORS |
+| `SITE_URL` | Opcional; site para onde os links de e-mail voltam (default `https://buddylogdemo.vercel.app`) |
+| `AUTH_CALLBACK_URL` | Fallback do redirect de e-mail quando o pedido não vem de uma origem conhecida |
 | `AUTH_SUCCESS_URL` | Opcional; override do redirect depois da sessão |
+| `PASSWORD_RESET_URL` | Opcional; página do site para a nova senha (default: site + `?redefinir=1`) |
 
-`AUTH_CALLBACK_URL` tem que estar nas Redirect URLs do Supabase.
+O link dos e-mails volta por `<origem do site>/api/auth/callback`. Nas Redirect URLs do Supabase precisa ter `https://buddylogdemo.vercel.app/**` (e `http://localhost:5173/**` para dev). Se o link cair direto nesta API sem o cookie do PKCE, o callback redireciona para o mesmo caminho no site.
 
 Na Vercel o app vira uma Function (`index.ts` exporta o Express). `NODE_ENV=production` já vem da plataforma. **Não** defina `REDIS_URL` (localhost não existe lá). Depois do domínio `*.vercel.app`:
 
@@ -138,8 +140,9 @@ Objeto `user` comum:
   "id": "uuid",
   "email": "rafael@email.com",
   "displayName": "Rafael",
-  "avatarUrl": null,
-  "providers": ["email"]
+  "emailConfirmed": true,
+  "createdAt": 1730000000000,
+  "lastSignInAt": 1730000000000
 }
 ```
 
@@ -157,21 +160,43 @@ Cria usuário no Supabase e `profiles` no Neon.
 
 **201** `{ "user", "sessionCreated", "message" }`
 
-Confirmação de e-mail ligada → `sessionCreated: false`. E-mail já cadastrado (identities vazias) → **409**.
+Confirmação de e-mail ligada → `sessionCreated: false`. E-mail já cadastrado (identities vazias) → **409**. Limite de envio de e-mail do Supabase estourado → **429** `{ "error": "Email rate limit exceeded", "code": "email_rate_limit" }`.
 
-`emailRedirectTo` = `AUTH_CALLBACK_URL`.
+`emailRedirectTo` = `<Origin>/api/auth/callback` quando o `Origin` é conhecido; senão `AUTH_CALLBACK_URL`.
 
 ### `POST /auth/login`
 
-**200** `{ "user", "expiresAt" }` (`expiresAt` Unix s ou `null`) · **401** credenciais.
+**200** `{ "user", "expiresAt" }` (`expiresAt` Unix s ou `null`) · **401** credenciais · **403** `{ "code": "email_not_confirmed" }` e-mail ainda não confirmado.
+
+### `POST /auth/forgot-password`
+
+```json
+{ "email": "ana@empresa.com" }
+```
+
+Manda o e-mail de redefinição (PKCE: o link tem que ser aberto no mesmo navegador que pediu). **200** `{ "ok": true }` exista ou não a conta · **400** e-mail ausente · **429** `{ "code": "email_rate_limit" }`.
+
+O link passa por `GET /auth/callback`, que abre uma sessão de recuperação e redireciona para o site com `?redefinir=1` (`PASSWORD_RESET_URL` → `SITE_URL`).
+
+### `POST /auth/reset-password`
+
+Sessão (a de recuperação serve). 
+
+```json
+{ "password": "novaSenha123" }
+```
+
+**200** `{ "ok": true }` · **400** senha fora do limite, `same_password` ou `weak_password` · **401** sem sessão (link expirado).
 
 ### `GET /auth/callback`
 
 Query: `code` (PKCE), ou `token_hash` + `type` (e-mail). Hash `#access_token` usa `confirm-hash.js` + `POST /auth/session`.
 
-Sucesso: **303** para `AUTH_SUCCESS_URL` ou `CLIENT_URL`. Se `CLIENT_URL` for a raiz desta API, redireciona para `/auth/me`. Sem URL de site: HTML ou `{ "authenticated": true }`.
+Sucesso: **303** para `AUTH_SUCCESS_URL` ou `SITE_URL`.
 
-Erros do Supabase: `error` / `error_description`.
+`code` sem cookie `*-code-verifier` (link caiu direto na API): **303** para `SITE_URL/api/auth/callback?code=…&bounced=1`.
+
+Erros (Supabase `error_description`, link expirado, outro navegador): no navegador **303** para `SITE_URL/?erro_auth=<mensagem>` (o site mostra no login); JSON → `{ "error" }`.
 
 ### `GET /auth/confirm-hash.js`
 
@@ -183,11 +208,33 @@ Body: `access_token`, `refresh_token`. Grava cookie. **200** `{ "authenticated":
 
 ### `POST /auth/logout`
 
+Body opcional: `{ "everywhere": true }` encerra a sessão em todos os aparelhos (signOut global). Sempre apaga os cookies `sb-*`, com ou sem sessão.
+
 **200** `{ "ok": true }`
 
 ### `GET /auth/me`
 
 Auth. **200** `{ "user" }` · **401**.
+
+### `PATCH /auth/me`
+
+Auth. Troca o nome exibido (Supabase metadata + `profiles`).
+
+```json
+{ "displayName": "Ana Souza" }
+```
+
+**200** `{ "user" }` · **400** vazio ou mais de 64 caracteres.
+
+### `POST /auth/change-password`
+
+Auth. Confere a senha atual antes de trocar.
+
+```json
+{ "currentPassword": "antiga123", "newPassword": "novaSenha123" }
+```
+
+**200** `{ "ok": true }` · **400** `wrong_password` (senha atual errada, não é 401 para não derrubar a sessão), `same_password`, `weak_password`, tamanho fora de 6–72.
 
 ---
 
@@ -226,7 +273,7 @@ Cria grupo, cargo Admin (rank 0, todas as perms) e coloca o usuário como owner.
 
 Grupos em que o usuário é membro.
 
-**200** `{ "groups": [{ "id", "name", "description", "cnpj", "ownerId", "createdAt", "updatedAt" }] }`
+**200** `{ "groups": [{ "id", "name", "description", "cnpj", "ownerId", "isOwner", "roleName", "createdAt", "updatedAt" }] }`
 
 ### `GET /groups/:groupId`
 
@@ -406,7 +453,6 @@ Membro. Lista membros com cargo, perms e se é owner.
     {
       "userId": "uuid",
       "displayName": "Rafael",
-      "avatarUrl": null,
       "joinedAt": 1730000000000,
       "isOwner": true,
       "role": {
@@ -532,11 +578,15 @@ Qualquer usuário logado. Entra no grupo com o cargo do convite e conta um uso.
 | GET | `/` | callback |
 | POST | `/auth/signup` | não |
 | POST | `/auth/login` | não |
+| POST | `/auth/forgot-password` | não |
+| POST | `/auth/reset-password` | sim |
 | GET | `/auth/callback` | callback |
 | GET | `/auth/confirm-hash.js` | não |
 | POST | `/auth/session` | não |
+| POST | `/auth/change-password` | sim |
 | POST | `/auth/logout` | cookie |
 | GET | `/auth/me` | sim |
+| PATCH | `/auth/me` | sim |
 | POST | `/groups/create` | sim |
 | GET | `/groups/listgroups` | sim |
 | GET | `/groups/getinvetory/:groupId` | sim + perm |
